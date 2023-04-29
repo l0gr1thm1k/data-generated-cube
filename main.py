@@ -114,10 +114,15 @@ class Cube:
         """
         cubes = len(os.listdir(self.data_directory))
         color_counts = {}
+        color_percents = {}
         for color in self.color_map:
-            color_subset_frame = self.frames[self.frames['Color Category'].isin(self.color_map[color])]
+            color_subset_frame = self.frames[(self.frames['Color Category'].isin(self.color_map[color])) &
+                                             (~self.frames['maybeboard'])]
             color_subset_frame.reset_index(inplace=True, drop=True)
-            color_counts[color] = int(color_subset_frame.shape[0] / cubes)
+            cards_of_color_per_cube_average = int(color_subset_frame.shape[0] / cubes)
+            normalized_percent = cards_of_color_per_cube_average / self.card_count
+            normalized_card_count = int(normalized_percent * self.card_count)
+            color_counts[color] = normalized_card_count # int(color_subset_frame.shape[0] / cubes)
             logger.info(f"{color_counts[color]} '{self.color_map[color][-1]}' cards in the average cube")
 
         return color_counts
