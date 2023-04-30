@@ -27,7 +27,7 @@ class Cube:
                           'l': ['l', 'Lands']}
         self.frames = self.make_combine_cubes_in_data_dir(self.data_directory)
         self.cube = self.make_cube(self.card_count)
-        to_pickle(self.elo_fetcher.cache, os.path.join(os.path.dirname(__file__), 'elo_cache.pickle'))
+
 
     def make_combine_cubes_in_data_dir(self, data_dir: str) -> pd.DataFrame:
         """
@@ -94,8 +94,8 @@ class Cube:
             logger.info(f"Extending cards per color frame by {color_extension} due to blacklist length")
         combined_frame = pd.concat([color_frames[xx][:card_counts[xx] + color_extension] for xx in color_frames])
         combined_frame = self.implement_blacklist(combined_frame)
-        combined_frame.sort_values(['Frequency', 'name'], ascending=[False, True], inplace=True)
-        combined_frame.reset_index(drop=True, inplace=True)
+        combined_frame.sort_values(['Frequency', 'ELO'], ascending=[False, False], inplace=True)
+        #combined_frame.reset_index(drop=True, inplace=True)
 
         combined_frame = combined_frame[:target_cube_size]
 
@@ -131,6 +131,15 @@ class Cube:
             color_counts[color] = normalized_card_count
             logger.info(f"{color_counts[color]} '{self.color_map[color][-1]}' cards in the average cube")
 
+        while sum(color_counts.values()) < self.card_count:
+            for color in ['u', 'c', 'b', 'm', 'r', 'g', 'w', 'l']:
+                if sum(color_counts.values()) < self.card_count:
+                    color_counts[color] += 1
+                else:
+                    break
+
+        logger.info(f"{color_counts}")
+
         return color_counts
 
     def make_color_frame(self, color: str) -> pd.DataFrame:
@@ -154,11 +163,13 @@ class Cube:
         freq_frame.name = [xx[0] for xx in frequencies]
         freq_frame.Frequency = [xx[1] for xx in frequencies]
 
-        # TODO: Add ELO scores here
         logger.info(f"Pulling ELO information for {color} category cards")
         elos = []
         for index in range(freq_frame.shape[0]):
             elos.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
+        freq_frame['ELO'] = elos
+        freq_frame = freq_frame.sort_values(['Frequency', 'ELO'], ascending=[False, False])
+        freq_frame.reset_index(inplace=True, drop=True)
     
         return freq_frame
     
@@ -170,6 +181,8 @@ class Cube:
         color_dict = {}
         for color in self.color_map:
             color_dict[color] = self.make_color_frame(color)
+
+        to_pickle(self.elo_fetcher.cache, os.path.join(self.elo_fetcher.data_dir, 'elo_cache.pickle'))
     
         return color_dict
 
@@ -188,7 +201,7 @@ class ELO:
         html_content = response.content.decode("utf-8")
         matches = self.elo_pattern.findall(html_content)
         if not matches:
-            raise ValueError(f"Could not find any Elo data on card with ID {card_id}")
+            logger.info(f"Could not find any Elo data on card with ID {card_id}")
         else:
             elo_score = float(self.elo_digit_pattern.findall(matches[0])[0])
             return elo_score
@@ -208,7 +221,8 @@ class ELO:
             scryfall_get_url = f"https://api.scryfall.com/cards/named?exact={normalized_card_name}"
             response = requests.get(scryfall_get_url).json()
         except:
-            raise ValueError(f"No card named {card_name} in the Scryfall database", )
+            logger.info(f"No card named {card_name} in the Scryfall database", )
+            response = {}
 
         return response
 
@@ -224,19 +238,23 @@ class ELO:
             return elo_score
 
         except KeyError:
-            raise KeyError(f"No card with name '{card_name}' found in Scryfall data.")
+            logger.info(f"No card with name '{card_name}' found in Scryfall data.")
+
+            return None
 
     def update_card_elo(self, card_name: str):
         try:
             elo_score = self.get_card_elo_from_cube_cobra(card_name)
-        except ValueError as e:
+
+            self.cache[card_name] = {
+                "elo": elo_score,
+                "lastUpdated": datetime.now()
+            }
+
+        except KeyError as e:
             print(e)
             return
 
-        self.cache[card_name] = {
-            "elo": elo_score,
-            "lastUpdated": datetime.now()
-        }
 
     def get_card_elo(self, card_name: str) -> float:
         cache_data = self.cache.get(card_name)
@@ -244,7 +262,11 @@ class ELO:
 
         if cache_data is None or now_timestamp - cache_data["lastUpdated"].timestamp() > 7 * 24 * 60 * 60:
             self.update_card_elo(card_name)
-            cache_data = self.cache[card_name]
+            try:
+                cache_data = self.cache[card_name]
+            except KeyError:
+
+                return -1.0
 
         return cache_data["elo"]
 
@@ -275,5 +297,5 @@ def from_pickle(path: str):
 
 
 if __name__ == '__main__':
-    vintage_dir = 'data/cubes/2023_04_14_test'
+    vintage_dir = 'data/cubes/2023_04_30'
     cube_creator = Cube(vintage_dir, 360, blacklist_path=None)
