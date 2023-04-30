@@ -1,10 +1,15 @@
 import os
-import pandas as pd
-
+import re
+import time
 from collections import defaultdict
-from loguru import logger
-from warnings import filterwarnings
+from datetime import datetime, timedelta
 from typing import Union
+from warnings import filterwarnings
+
+import dill
+import pandas as pd
+import requests
+from loguru import logger
 
 filterwarnings('ignore')
 
@@ -12,6 +17,7 @@ filterwarnings('ignore')
 class Cube:
 
     def __init__(self, data_directory: str, card_count, blacklist_path: Union[None, str] = None):
+        self.elo_fetcher = ELO()
         self.blacklist_path = None if not blacklist_path else os.path.join(os.path.abspath('./data/blacklists'),
                                                                            blacklist_path)
         self.data_directory = data_directory
@@ -21,6 +27,7 @@ class Cube:
                           'l': ['l', 'Lands']}
         self.frames = self.make_combine_cubes_in_data_dir(self.data_directory)
         self.cube = self.make_cube(self.card_count)
+        to_pickle(self.elo_fetcher.cache, os.path.join(os.path.dirname(__file__), 'elo_cache.pickle'))
 
     def make_combine_cubes_in_data_dir(self, data_dir: str) -> pd.DataFrame:
         """
@@ -146,6 +153,12 @@ class Cube:
         freq_frame = pd.DataFrame(columns=['name', 'Frequency'])
         freq_frame.name = [xx[0] for xx in frequencies]
         freq_frame.Frequency = [xx[1] for xx in frequencies]
+
+        # TODO: Add ELO scores here
+        logger.info(f"Pulling ELO information for {color} category cards")
+        elos = []
+        for index in range(freq_frame.shape[0]):
+            elos.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
     
         return freq_frame
     
@@ -161,7 +174,106 @@ class Cube:
         return color_dict
 
 
+class ELO:
+
+    def __init__(self):
+        self.elo_pattern = re.compile(r'"elo".{0,10}')
+        self.elo_digit_pattern = re.compile(r"\d+.\d+")
+        self.data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        self.cache = from_pickle(os.path.join(self.data_dir, 'elo_cache.pickle'))
+
+    def get_elo_from_id(self, card_id: str) -> float:
+        url = f"https://cubecobra.com/tool/card/{card_id}?tab=1"
+        response = requests.get(url)
+        html_content = response.content.decode("utf-8")
+        matches = self.elo_pattern.findall(html_content)
+        if not matches:
+            raise ValueError(f"Could not find any Elo data on card with ID {card_id}")
+        else:
+            elo_score = float(self.elo_digit_pattern.findall(matches[0])[0])
+            return elo_score
+
+    @staticmethod
+    def normalize_card_name(card_name: str) -> str:
+        card_name = card_name.lower()
+        card_name = re.sub(r'\s+', '%20', card_name)
+        card_name = card_name.replace('&', ' ')
+
+        return card_name
+
+    def get_card_stats_from_scryfall(self, card_name: str) -> dict:
+        time.sleep(1.0)
+        normalized_card_name = self.normalize_card_name(card_name)
+        try:
+            scryfall_get_url = f"https://api.scryfall.com/cards/named?exact={normalized_card_name}"
+            response = requests.get(scryfall_get_url).json()
+        except:
+            raise ValueError(f"No card named {card_name} in the Scryfall database", )
+
+        return response
+
+    def get_card_elo_from_cube_cobra(self, card_name: str) -> float:
+        normalized_card_name = self.normalize_card_name(card_name)
+        scryfall_data = self.get_card_stats_from_scryfall(normalized_card_name)
+
+        try:
+
+            elo_score = self.get_elo_from_id(scryfall_data["id"])
+            logger.info(f"Elo score for {card_name} is {elo_score}")
+
+            return elo_score
+
+        except KeyError:
+            raise KeyError(f"No card with name '{card_name}' found in Scryfall data.")
+
+    def update_card_elo(self, card_name: str):
+        try:
+            elo_score = self.get_card_elo_from_cube_cobra(card_name)
+        except ValueError as e:
+            print(e)
+            return
+
+        self.cache[card_name] = {
+            "elo": elo_score,
+            "lastUpdated": datetime.now()
+        }
+
+    def get_card_elo(self, card_name: str) -> float:
+        cache_data = self.cache.get(card_name)
+        now_timestamp = datetime.utcnow().timestamp()
+
+        if cache_data is None or now_timestamp - cache_data["lastUpdated"].timestamp() > 7 * 24 * 60 * 60:
+            self.update_card_elo(card_name)
+            cache_data = self.cache[card_name]
+
+        return cache_data["elo"]
+
+
+def to_pickle(data, path: str, protocol: int = 3) -> None:
+    """
+    pickle data to a file
+
+    :param data: data to pickle
+    :param path: path to write data to
+    :param protocol: pickle protocol level to be used (python's current default is 3)
+    """
+
+    with open(path, 'wb') as file:
+        dill.dump(data, file, protocol=protocol)
+
+
+def from_pickle(path: str):
+    """
+    load data from a pickle file
+
+    :param path: path to load
+    :return: unpickled data
+    """
+
+    with open(path, 'rb') as file:
+        return dill.load(file)
+
+
 if __name__ == '__main__':
     vintage_dir = 'data/cubes/2023_04_14_test'
     cube_creator = Cube(vintage_dir, 360, blacklist_path=None)
-
