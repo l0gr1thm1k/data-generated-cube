@@ -2,8 +2,8 @@ import os
 import re
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Union
+from datetime import datetime
+from typing import List, Union
 from warnings import filterwarnings
 
 import dill
@@ -15,18 +15,28 @@ filterwarnings('ignore')
 
 
 class Cube:
+    color_map = {'w': ['w', 'White'], 'u': ['u', 'Blue'], 'b': ['b', 'Black'], 'r': ['r', 'Red'], 'g': ['g', 'Green'],
+                 'm': ['m', 'Hybrid', 'Multicolored'], 'c': ['c', 'Colorless'], 'l': ['l', 'Lands']}
 
-    def __init__(self, data_directory: str, card_count, blacklist_path: Union[None, str] = None):
+    def __init__(self, data_directory: Union[str, List[str]], card_count, blacklist_path: Union[None, str] = None):
         self.elo_fetcher = ELO()
         self.blacklist_path = None if not blacklist_path else os.path.join(os.path.abspath('./data/blacklists'),
                                                                            blacklist_path)
-        self.data_directory = data_directory
         self.card_count = card_count
-        self.color_map = {'w': ['w', 'White'], 'u': ['u', 'Blue'], 'b': ['b', 'Black'], 'r': ['r', 'Red'],
-                          'g': ['g', 'Green'], 'm': ['m', 'Hybrid', 'Multicolored'], 'c': ['c', 'Colorless'],
-                          'l': ['l', 'Lands']}
-        self.frames = self.make_combine_cubes_in_data_dir(self.data_directory)
-        self.cube = self.make_cube(self.card_count)
+        self.card_count_dicts = []
+        self.data_directory = data_directory
+        if isinstance(data_directory, str):
+            self.frames = self.make_combine_cubes_in_data_dir(self.data_directory)
+            self.cube = self.make_cube(frame=self.frames, path=self.data_directory, target_cube_size=self.card_count)
+        elif isinstance(data_directory, list):
+            self.frames = [self.make_combine_cubes_in_data_dir(directory) for directory in self.data_directory]
+
+            self.cubes = []
+            for frame, data_path in zip(self.frames, self.data_directory):
+                self.cubes.append(self.make_cube(frame, data_path, self.card_count))
+
+            self.cube = self.weight_and_merge_frames(self.cubes)
+
 
 
     def make_combine_cubes_in_data_dir(self, data_dir: str) -> pd.DataFrame:
@@ -80,13 +90,14 @@ class Cube:
 
         return filtered_frame
 
-    def make_cube(self, target_cube_size):
+    def make_cube(self, frame, path, target_cube_size):
         """
 
         :return:
         """
-        card_counts = self.get_color_counts()
-        color_frames = self.make_colors_dict()
+        card_counts = self.get_color_counts(frame, path)
+        self.card_count_dicts.append(card_counts)
+        color_frames = self.make_colors_dict(frame, path)
         if not self.blacklist_path:
             color_extension = 0
         else:
@@ -94,36 +105,36 @@ class Cube:
             logger.info(f"Extending cards per color frame by {color_extension} due to blacklist length")
         combined_frame = pd.concat([color_frames[xx][:card_counts[xx] + color_extension] for xx in color_frames])
         combined_frame = self.implement_blacklist(combined_frame)
-        combined_frame.sort_values(['Frequency', 'ELO'], ascending=[False, False], inplace=True)
+        combined_frame.sort_values(['Coverage', 'ELO'], ascending=[False, False], inplace=True)
         #combined_frame.reset_index(drop=True, inplace=True)
 
         combined_frame = combined_frame[:target_cube_size]
 
-        with open(os.path.join(os.path.abspath('.'), f'results/{os.path.split(self.data_directory)[-1]}_cards.txt'),
+        with open(os.path.join(os.path.abspath('.'), f'results/{os.path.split(path)[-1]}_cards.txt'),
                   'w') as fstream:
             for name in combined_frame.name:
                 fstream.write(name + '\n')
 
-        temp = self.frames.drop_duplicates('name')
+        temp = frame.drop_duplicates('name')
         temp.reset_index(inplace=True, drop=True)
         merged = combined_frame.merge(temp, on='name')
-        merged = merged[['name', 'Frequency', 'CMC', 'Type', 'Color', 'Set', 'Rarity', 'Color Category']]
+        merged = merged[
+            ['name', 'Frequency', 'Coverage', 'ELO', 'CMC', 'Type', 'Color', 'Set', 'Rarity', 'Color Category']]
         merged.to_csv(
-            os.path.join(os.path.abspath('.'), f'results/{os.path.split(self.data_directory)[-1]}_dataframe.csv'),
+            os.path.join(os.path.abspath('.'), f'results/{os.path.split(path)[-1]}_dataframe.csv'),
             index=False)
 
         return merged
 
-    def get_color_counts(self) -> dict:
+    def get_color_counts(self, frame, directory) -> dict:
         """
 
         :return:
         """
-        cubes = len(os.listdir(self.data_directory))
+        cubes = len(os.listdir(directory))
         color_counts = {}
         for color in self.color_map:
-            color_subset_frame = self.frames[(self.frames['Color Category'].isin(self.color_map[color])) &
-                                             (~self.frames['maybeboard'])]
+            color_subset_frame = frame[frame['Color Category'].isin(self.color_map[color]) & (~frame['maybeboard'])]
             color_subset_frame.reset_index(inplace=True, drop=True)
             cards_of_color_per_cube_average = int(color_subset_frame.shape[0] / cubes)
             normalized_percent = cards_of_color_per_cube_average / self.card_count
@@ -142,7 +153,7 @@ class Cube:
 
         return color_counts
 
-    def make_color_frame(self, color: str) -> pd.DataFrame:
+    def make_color_frame(self, color: str, frame, data_path) -> pd.DataFrame:
         """
 
         :param color:
@@ -150,7 +161,8 @@ class Cube:
         """
         card_counter = defaultdict(int)
 
-        color_subset_frame = self.frames[self.frames['Color Category'].isin(self.color_map[color])]
+        # color_subset_frame = self.frames[self.frames['Color Category'].isin(self.color_map[color])]
+        color_subset_frame = frame[frame['Color Category'].isin(self.color_map[color])]
         color_subset_frame.reset_index(inplace=True, drop=True)
         for card_name in color_subset_frame.name:
             card_counter[card_name] += 1
@@ -163,28 +175,97 @@ class Cube:
         freq_frame.name = [xx[0] for xx in frequencies]
         freq_frame.Frequency = [xx[1] for xx in frequencies]
 
-        logger.info(f"Pulling ELO information for {color} category cards")
-        elos = []
+        number_of_cubes = len(os.listdir(data_path))
+
+        def calculate_card_coverage(row):
+            return round(row.Frequency / number_of_cubes, 4)
+
+        freq_frame['Coverage'] = freq_frame.apply(calculate_card_coverage, axis=1)
+
+        elo_scores = []
         for index in range(freq_frame.shape[0]):
-            elos.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
-        freq_frame['ELO'] = elos
-        freq_frame = freq_frame.sort_values(['Frequency', 'ELO'], ascending=[False, False])
+            elo_scores.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
+        freq_frame['ELO'] = elo_scores
+        freq_frame = freq_frame.sort_values(['Coverage', 'ELO'], ascending=[False, False])
         freq_frame.reset_index(inplace=True, drop=True)
     
         return freq_frame
     
-    def make_colors_dict(self) -> dict:
+    def make_colors_dict(self, frame, path) -> dict:
         """
 
         :return:
         """
         color_dict = {}
         for color in self.color_map:
-            color_dict[color] = self.make_color_frame(color)
+            color_dict[color] = self.make_color_frame(color, frame, path)
 
         to_pickle(self.elo_fetcher.cache, os.path.join(self.elo_fetcher.data_dir, 'elo_cache.pickle'))
     
         return color_dict
+
+    def weight_and_merge_frames(self, frame_list):
+        unique_cards = []
+        for frame in frame_list:
+            # this is all cards in the subset directory of cubes. eg. 11 cubes -> 4873 cards
+            unique_cards.extend(frame.name.tolist())
+        unique_cards = set(unique_cards)
+
+        columns = frame_list[0].columns
+
+        rows = []
+        for card in unique_cards:
+            logger.info("Working on card: " + card)
+            card_occurrences = [frame[frame.name == card] for frame in frame_list]
+            weights = 0
+            occurrence = None
+            for occurrence_frame in card_occurrences:
+                try:
+                    occurrence = occurrence_frame.iloc[0]
+                    weights += occurrence.Coverage
+                except:
+                    pass
+                    # print(f"Had an issue finding a frame for {card}")
+            occurrence.Coverage = round(weights / len(frame_list), 4)
+            rows.append(occurrence.tolist())
+
+        weighted_frame = pd.DataFrame(columns=columns, data=rows)
+        # .info(f"Frame Columns: {weighted_frame.columns}")
+        weighted_frame.sort_values(['Coverage', 'ELO'], ascending=[False, False], inplace=True)
+        weighted_frame.reset_index(inplace=True, drop=True)
+
+        # TODO: Replace this
+
+        avg_dict = {}
+        num_dicts = len(self.card_count_dicts)
+        for color in self.color_map:
+            avg_dict[color] = round(sum(d[color] for d in self.card_count_dicts) / num_dicts)
+
+        logger.info(f"Averaging the card counts for each color yields: {avg_dict}")
+
+        averaged_color_frames = []
+        for color in avg_dict:
+            sub_frame = weighted_frame[weighted_frame['Color Category'].isin(self.color_map[color])]
+            sub_frame.reset_index(inplace=True, drop=True)
+            sub_frame = sub_frame[:avg_dict[color]]
+            averaged_color_frames.append(sub_frame)
+            logger.info(f"Added a '{color}' frame with {sub_frame.shape[0]} cards when we desire {avg_dict[color]} cards")
+
+        # weighted_frame = weighted_frame[:self.card_count]
+        concatted_weighted_frame = pd.concat(averaged_color_frames)
+
+        with open('/home/daniel/Desktop/weighted_frame_cards.txt', 'w') as fstream:
+            for name in concatted_weighted_frame.name:
+                fstream.write(name + '\n')
+
+        # temp = weighted_frame.drop_duplicates('Name')
+        # temp.reset_index(inplace=True, drop=True)
+        # merged = weighted_frame.merge(temp, on='Name')
+        # merged = merged[['Name', 'Coverage', 'CMC', 'Type', 'Color', 'Set', 'Rarity', 'Color Category']]
+        concatted_weighted_frame.to_csv('/home/daniel/Desktop/weighted_frame_dataframe.csv', index=False)
+
+        return concatted_weighted_frame
+
 
 
 class ELO:
@@ -298,4 +379,6 @@ def from_pickle(path: str):
 
 if __name__ == '__main__':
     vintage_dir = 'data/cubes/2023_04_30'
-    cube_creator = Cube(vintage_dir, 360, blacklist_path=None)
+    test_me = [vintage_dir, 'data/cubes/2023_04_14_test']
+    cube_creator = Cube(test_me, 360, blacklist_path=None)
+
