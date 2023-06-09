@@ -25,10 +25,12 @@ class Cube:
         self.card_count = card_count
         self.card_count_dicts = []
         self.data_directory = data_directory
-        if isinstance(data_directory, str):
+
+    def _run(self):
+        if isinstance(self.data_directory, str):
             self.frames = self.make_combine_cubes_in_data_dir(self.data_directory)
             self.cube = self.make_cube(frame=self.frames, path=self.data_directory, target_cube_size=self.card_count)
-        elif isinstance(data_directory, list):
+        elif isinstance(self.data_directory, list):
             self.frames = [self.make_combine_cubes_in_data_dir(directory) for directory in self.data_directory]
 
             self.cubes = []
@@ -336,7 +338,6 @@ class ELO:
             print(e)
             return
 
-
     def get_card_elo(self, card_name: str) -> float:
         cache_data = self.cache.get(card_name)
         now_timestamp = datetime.utcnow().timestamp()
@@ -379,6 +380,7 @@ def from_pickle(path: str):
 
 if __name__ == '__main__':
     vintage_dir = 'data/cubes/2023_04_30'
-    test_me = [vintage_dir, 'data/cubes/2023_04_14_test']
+    just_powered = 'data/cubes/2023_04_14_test'
+    test_me = [vintage_dir, just_powered]
     cube_creator = Cube(test_me, 360, blacklist_path=None)
-
+    cube_creator._run()
