@@ -1,6 +1,10 @@
 
 .idea/
 
-data/cubes/
+src/data/cubes/
 
-results/
+src/results/
+
+__pycache__/
+
+src/data_generated_cube/data/default-cards-*.json

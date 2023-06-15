@@ -12,7 +12,7 @@ filterwarnings('ignore')
 class Cube:
 
     def __init__(self, data_directories: List[str], card_count: int, blacklist_path: Union[None, str] = None):
-        self.blacklist_path = None if not blacklist_path else os.path.join(os.path.abspath('./data/blacklists'),
+        self.blacklist_path = None if not blacklist_path else os.path.join(os.path.abspath('src/data/blacklists'),
                                                                            blacklist_path)
         self.data_directories = data_directories
         self.card_count = card_count
@@ -57,7 +57,7 @@ class Cube:
         :param frame:
         :return:
         """
-        remap_frame = pd.read_csv(os.path.join(os.path.abspath('.'), "data/manually_mapped_color_cards.csv"))
+        remap_frame = pd.read_csv(os.path.join(os.path.abspath('.'), "src/data/manually_mapped_color_cards.csv"))
         for index in range(remap_frame.shape[0]):
             for frame_index in range(frame.shape[0]):
                 if remap_frame.Name[index] == frame.Name[frame_index]:

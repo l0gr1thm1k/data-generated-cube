@@ -1,4 +1,4 @@
-# Data Generated Cube
+# Data Generated CubeGenerator
 
 
 
