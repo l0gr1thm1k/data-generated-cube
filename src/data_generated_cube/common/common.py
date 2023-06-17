@@ -3,6 +3,7 @@ import dill
 from datetime import datetime, timezone
 from loguru import logger
 from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler
 
 
 def to_pickle(data, path: str, protocol: int = 3) -> None:
@@ -55,3 +56,19 @@ def get_utc_time() -> str:
     """
     now_utc = datetime.now(timezone.utc)
     return now_utc.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def min_max_normalize_sklearn(values):
+    # Reshape the input list to a 2D array
+    values_array = [[x] for x in values]
+
+    # Create an instance of MinMaxScaler
+    scaler = MinMaxScaler()
+
+    # Fit and transform the data
+    normalized_values = scaler.fit_transform(values_array)
+
+    # Flatten the normalized values to a 1D list
+    normalized_values = normalized_values.flatten()
+
+    return normalized_values

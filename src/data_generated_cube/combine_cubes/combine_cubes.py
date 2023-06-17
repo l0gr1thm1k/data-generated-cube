@@ -1,28 +1,32 @@
 import os
 import pandas as pd
 
+import numpy as np
+
 from loguru import logger
 from pathlib import Path
 
+from data_generated_cube.common.common import min_max_normalize_sklearn
 from data_generated_cube.common.constants import CARD_COLOR_MAP, CUBE_CREATION_RESOURCES_DIRECTORY
+from data_generated_cube.elo.elo_fetcher import ELOFetcher
 
 
 class CubeCombiner:
     manual_card_color_mapping = pd.read_csv(CUBE_CREATION_RESOURCES_DIRECTORY / 'manually_mapped_color_cards.csv')
 
-    def __init__(self):
-        pass
+    def __init__(self, data_dir):
+        self.elo_fetcher = ELOFetcher()
+        self.data_dir = data_dir
 
-    def combine_cubes_from_directory(self, data_dir: str) -> pd.DataFrame:
+    def combine_cubes_from_directory(self) -> pd.DataFrame:
         """
         Combines cubes from a specified directory into a single DataFrame. Additionally, perform cleaning and filtering.
 
-        :param data_dir: Directory path containing the cube files.
         :return: Combined DataFrame.
 
         """
         chunks = []
-        for cube_file_path in Path(data_dir).glob('*.csv'):
+        for cube_file_path in Path(self.data_dir).glob('*.csv'):
             chunk = self.process_cube_file(cube_file_path)
             if chunk is not None:
                 chunks.append(chunk)
@@ -31,8 +35,10 @@ class CubeCombiner:
             logger.info(f"Sampling {len(chunks)} cubes...")
             concatted_frame = pd.concat(chunks, ignore_index=True)
         else:
-            logger.debug("No cubes found in the specified directory...", directory=data_dir)
+            logger.debug("No cubes found in the specified directory...", directory=self.data_dir)
             concatted_frame = pd.DataFrame()
+
+        concatted_frame = self.get_new_columns(concatted_frame)
 
         return concatted_frame
 
@@ -94,3 +100,66 @@ class CubeCombiner:
         except KeyError as err:
 
             raise KeyError(f"Missing a key {color_string}: {err}")
+
+    def get_new_columns(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adds new columns to the DataFrame. The only required column in the data is 'name'.
+
+        * Frequency
+        * Inclusion Rate
+        * ELO
+        * Log ELO
+        * Log Inclusion Rate
+        * Normalized ELO
+        * Normalized Inclusion Rate
+        * Inclusion Rate ELO Diff
+        * Weighted Rank
+        """
+        data = self.calculate_frequency(data)
+        data = self.calculate_inclusion_rate(data)
+        data = self.get_elo_scores(data)
+        data['Log ELO'] = data['ELO'].apply(np.log)
+        data['Log Inclusion Rate'] = data['Inclusion Rate'].apply(np.log)
+        for new_col, norm_col in [('Normalized ELO', 'ELO'), ('Normalized Inclusion Rate', 'Inclusion Rate')]:
+            data[new_col] = min_max_normalize_sklearn(data[norm_col])
+        data['Inclusion Rate ELO Diff'] = data.apply(self.get_elo_coverage_diff, axis=1)
+        data['Weighted Rank'] = data['Inclusion Rate'] * data['Log ELO']
+
+        data = data.drop_duplicates(subset=['name'])
+
+        return data
+
+    @staticmethod
+    def calculate_frequency(frequency_dataframe: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculates the frequency of each card in the DataFrame.
+        """
+        frequency_dataframe['Frequency'] = frequency_dataframe.groupby('name')['name'].transform('size')
+
+        return frequency_dataframe
+
+    def calculate_inclusion_rate(self, frequency_dataframe: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculates the inclusion rate of each card in the DataFrame.
+        """
+        number_of_sampled_cubes = self.get_number_of_cubes_sampled(self.data_dir)
+        frequency_dataframe['Inclusion Rate'] = frequency_dataframe['Frequency'] / number_of_sampled_cubes
+        frequency_dataframe['Inclusion Rate'] = frequency_dataframe['Inclusion Rate'].round(4)
+
+        return frequency_dataframe
+
+    @staticmethod
+    def get_number_of_cubes_sampled(directory_path) -> int:
+        return len(list(Path(directory_path).glob('*.csv')))
+
+    def get_elo_scores(self, freq_frame):
+        elo_scores = []
+        for index in range(freq_frame.shape[0]):
+            elo_scores.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
+        freq_frame['ELO'] = elo_scores
+
+        return freq_frame
+
+    @staticmethod
+    def get_elo_coverage_diff(row):
+        return np.abs(row['Normalized Inclusion Rate'] - row['Normalized ELO'])

@@ -1,86 +1,107 @@
 Name,Color Category
-Ancient Grudge,r
-Archangel Avacyn,w
-Arid Mesa,l
-Avacyn's Pilgrim,g
-Azorius Signet,c
-Badlands,l
-Bayou,l
-Blood Crypt,l
-Bloodstained Mire,l
-Bomat Courier,c
-Boros Signet,c
-"Boseiju, Who Endures",l
-Breeding Pool,l
-Cave of the Frost Dragon,l
-Clay Champion,c
-Damn,b
-Dimir Signet,c
-Dismember,b
-"Eiganjo, Seat of the Empire",l
-Elves of Deep Shadow,g
-Faerie Conclave,l
-Flooded Strand,l
-"Gaea's Cradle",l
-Garruk Relentless,g
-Gitaxian Probe,u
-Godless Shrine,l
-Golgari Signet,c
-"Golos, Tireless Pilgrim",c
-Gruul Signet,c
-Hallowed Fountain,l
-Hive of the Eye Tyrant,l
-Karakas,l
-Ignoble Hierarch,g
-Izzet Signet,c
-Lingering Souls,w
-Marsh Flats,l
-Misty Rainforest,l
-Mox Emerald,c
-Mox Jet,c
-Mox Pearl,c
-Mox Ruby,c
-Mox Sapphire,c
-Noble Hierarch,g
-Orzhov Signet,c
-"Otawara, Soaring City",l
-Overgrown Tomb,l
-Phyrexian Metamorph,u
-Porcelain Legionnaire,w
-Plateau,l
-Polluted Delta,l
-Rakdos Signet,c
-Sacred Foundry,l
-Savannah,l
-Scrubland,l
-Soulfire Grand Master,w
-Selesnya Signet,c
-Shelldock Isle,l
-Simic Signet,c
-Steam Vents,l
-Stomping Ground,l
-Suspicious Stowaway,u
-Taiga,l
-Talisman of Conviction,c
-Talisman of Creativity,c
-Talisman of Curiosity,c
-Talisman of Dominance,c
-Talisman of Hierarchy,c
-Talisman of Impulse,c
-Talisman of Indulgence,c
-Talisman of Progress,c
-Talisman of Resilience,c
-Talisman of Unity,c
-"Tasigur, the Golden Fang",b
-Temple Garden,l
-Timeless Lotus,c
-Tolarian Academy,l
-Tropical Island,l
-Tundra,l
-Underground Sea,l
-Verdant Catacombs,l
-Volcanic Island,l
-"Volrath's Stronghold",l
-Watery Grave,l
-Wooded Foothills,l
-Windswept Heath,l
+"Boseiju, Who Endures",Land
+"Eiganjo, Seat of the Empire",Land
+"Gaea's Cradle",Land
+"Golos, Tireless Pilgrim",Colorless
+"Kibo, Uktabi Prince",Green
+"Otawara, Soaring City",Land
+"Tasigur, the Golden Fang",Black
+"Urborg, Tomb of Yawgmoth",Land
+"Valki, God of Lies",Black
+"Volrath's Stronghold",Land
+Ancient Den,Land
+Ancient Grudge,Red
+Archangel Avacyn,White
+Arid Mesa,Land
+"Avacyn's Pilgrim",Green
+Azorius Signet,Colorless
+Badlands,Land
+Bayou,Land
+Blood Crypt,Land
+Bloodstained Mire,Land
+Bomat Courier,Colorless
+Boros Signet,Colorless
+Breeding Pool,Land
+Cave of the Frost Dragon,Land
+Clay Champion,Colorless
+Cranial Plating,Colorless
+Damn,Black
+Den of the Bugbear,Land
+Dimir Signet,Colorless
+Dismember,Black
+Dryad Arbor,Land
+Elves of Deep Shadow,Green
+Faerie Conclave,Land
+Flooded Strand,Land
+Garruk Relentless,Green
+Gitaxian Probe,Blue
+Godless Shrine,Land
+Golgari Signet,Colorless
+Great Furnace,Land
+Gruul Signet,Colorless
+Hallowed Fountain,Land
+Hive of the Eye Tyrant,Land
+Ignoble Hierarch,Green
+Izzet Signet,Colorless
+Karakas,Land
+Ketria Triome,Land
+Lair of the Hydra,Land
+Lingering Souls,White
+Marsh Flats,Land
+Misty Rainforest,Land
+Mox Emerald,Colorless
+Mox Jet,Colorless
+Mox Pearl,Colorless
+Mox Ruby,Colorless
+Mox Sapphire,Colorless
+Noble Hierarch,Green
+Orcish Lumberjack,Red
+Orzhov Signet,Colorless
+Overgrown Tomb,Land
+Pendelhaven,Land
+Phyrexian Metamorph,Blue
+Plateau,Land
+Polluted Delta,Land
+Porcelain Legionnaire,White
+"Raffine's Tower",Land
+Rakdos Signet,Colorless
+Raugrin Triome,Land
+Sacred Foundry,Land
+Savannah,Land
+Scrubland,Land
+Seat of the Synod,Land
+Selesnya Signet,Colorless
+Shelldock Isle,Land
+Simic Signet,Colorless
+Soulfire Grand Master,White
+"Spara's Headquarters",Land
+Spellskite,Colorless
+Steam Vents,Land
+Stomping Ground,Land
+Suspicious Stowaway,Blue
+Taiga,Land
+Talisman of Conviction,Colorless
+Talisman of Creativity,Colorless
+Talisman of Curiosity,Colorless
+Talisman of Dominance,Colorless
+Talisman of Hierarchy,Colorless
+Talisman of Impulse,Colorless
+Talisman of Indulgence,Colorless
+Talisman of Progress,Colorless
+Talisman of Resilience,Colorless
+Talisman of Unity,Colorless
+Tear Asunder,Green
+Temple Garden,Land
+Timeless Lotus,Colorless
+Tolarian Academy,Land
+Tree of Tales,Land
+Tropical Island,Land
+Tundra,Land
+Underground Sea,Land
+Vault of Whispers,Land
+Verdant Catacombs,Land
+Volcanic Island,Land
+Watery Grave,Land
+Windswept Heath,Land
+Wooded Foothills,Land
+"Xander's Lounge",Land

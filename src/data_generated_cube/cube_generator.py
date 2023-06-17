@@ -14,7 +14,6 @@ class CubeGenerator:
     def __init__(self, data_sources: Union[str, List[str]], card_count, blacklist_path: Union[None, str] = None):
         self.card_count = card_count
         self.data_sources = data_sources
-        self.cube_combiner = CubeCombiner()
         self.cube_creator = CubeCreator(card_count=self.card_count,
                                         blacklist_path=blacklist_path)
         self.cube_merger = CuberMerger()
@@ -37,14 +36,19 @@ class CubeGenerator:
         return generated_cube
 
     def generate_cube_from_single_source(self) -> pd.DataFrame:
-        frames = self.cube_combiner.combine_cubes_from_directory(self.data_sources)
+        cube_combiner_instance = CubeCombiner(self.data_sources)
+        frames = cube_combiner_instance.combine_cubes_from_directory()
         cube = self.cube_creator.make_cube(frames, self.data_sources)
 
         return cube
 
     def generate_cubes_from_multiple_sources(self) -> pd.DataFrame:
         cubes = []
-        frames = [self.cube_combiner.combine_cubes_from_directory(directory) for directory in self.data_sources]
+        frames = []
+        for directory in self.data_sources:
+            cube_combiner_instance = CubeCombiner(directory)
+            frames.append(cube_combiner_instance.combine_cubes_from_directory())
+
         for frame, data_path in zip(frames, self.data_sources):
             cubes.append(self.cube_creator.make_cube(frame, data_path))
 
