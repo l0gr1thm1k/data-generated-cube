@@ -24,7 +24,8 @@ class CuberMerger:
         unique_cards = set()
         for frame in frame_list:
             unique_cards.update(frame.name.tolist())
-        return unique_cards
+
+        return list(unique_cards)
 
     def calculate_weighted_frame(self, unique_cards, frame_list, columns):
         card_data = []
@@ -32,7 +33,8 @@ class CuberMerger:
             card_data.append(self.process_card(card, frame_list))
 
         weighted_frame = pd.DataFrame(columns=columns, data=card_data)
-        weighted_frame.sort_values(['Inclusion Rate', 'ELO'], ascending=[False, False], inplace=True)
+        weighted_frame.sort_values(['Weighted Rank', 'Inclusion Rate', 'ELO'], ascending=[False, False, False],
+                                   inplace=True)
         weighted_frame.reset_index(inplace=True, drop=True)
 
         return weighted_frame
@@ -45,18 +47,18 @@ class CuberMerger:
         for occurrence_frame in card_occurrences:
             try:
                 occurrence = occurrence_frame.iloc[0]
-                weights += occurrence.Coverage
+                weights += occurrence['Weighted Rank']
             except:
                 pass
-        occurrence.Coverage = round(weights / len(frame_list), 4)
+        frame_list[0].loc[occurrence.name, 'Weighted Rank'] = round(weights / len(frame_list), 4)
 
         return occurrence.tolist()
 
     def average_card_counts(self, weighted_frame, card_count_dicts):
         avg_dict = self.calculate_average_dict(card_count_dicts)
         averaged_color_frames = []
-        for color in avg_dict:
-            sub_frame = weighted_frame[weighted_frame['Color Category'].isin(COLORS_SET)]
+        for color in list(COLORS_SET):
+            sub_frame = weighted_frame[weighted_frame['Color Category'] == color]
             sub_frame.reset_index(inplace=True, drop=True)
             sub_frame = sub_frame[:avg_dict[color]]
             averaged_color_frames.append(sub_frame)
@@ -69,6 +71,7 @@ class CuberMerger:
         num_dicts = len(card_count_dicts)
         for color in list(COLORS_SET):
             avg_dict[color] = round(sum(d[color] for d in card_count_dicts) / num_dicts)
+
         return avg_dict
 
     @staticmethod
