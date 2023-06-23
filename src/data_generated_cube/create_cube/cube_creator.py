@@ -35,8 +35,6 @@ class CubeCreator:
         blacklist_updated_frame = self.remove_blacklist_cards(frame)
         color_frames = self.make_colors_dict(blacklist_updated_frame, path)
 
-        # TODO: Combine all frames into one massive thing and then add new columns before going to the next step
-
         combined_frame = pd.concat([color_frames[xx][:card_counts[xx]] for xx in color_frames])
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]

@@ -1,3 +1,5 @@
+import aiohttp
+import asyncio
 import datetime
 import json
 import re
@@ -18,20 +20,26 @@ class CubeCobraScraper:
         self.blacklist = ['data']
         self.file_generator = CSVFileGenerator(data_dir)
 
-    def get_cube_data(self):
-        page_soup = self.get_website_soup_object(self.base_url)
+    async def get_cube_data(self):
+        page_soup = await self.get_website_soup_object(self.base_url)
         cube_json_query = self.get_json_query(page_soup)
         links = self.get_cube_links(cube_json_query)
+        tasks = []
         for link in links:
-            self.process_cube(link)
+            task = asyncio.create_task(self.process_cube(link))
+            tasks.append(task)
+
+        await asyncio.gather(*tasks)
 
         return links
 
     @staticmethod
-    def get_website_soup_object(target_url):
-        response = requests.get(target_url)
+    async def get_website_soup_object(target_url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(target_url) as response:
+                content = await response.read()
 
-        return BeautifulSoup(response.content, 'html.parser')
+        return BeautifulSoup(content, 'html.parser')
 
     @staticmethod
     def get_json_query(soup_object):
@@ -51,7 +59,11 @@ class CubeCobraScraper:
             last_updated = self.convert_timestamp(cube['date'])
             today = datetime.datetime.today()
 
-            if 'Vintage' in category and int(360 * .9) <= card_count <= int(360 * 1.1) and (today - last_updated).days < 365:
+            is_vintage = 'Vintage' in category
+            acceptable_card_range = int(360 * .9) <= card_count <= int(360 * 1.1)
+            updated_within_year = (today - last_updated).days < 365
+
+            if is_vintage and acceptable_card_range and updated_within_year:
                 try:
                     cube_id = cube['shortId']
                 except KeyError:
@@ -68,9 +80,15 @@ class CubeCobraScraper:
         converted_timestamp = int(str(timestamp)[:10])
         return datetime.datetime.fromtimestamp(converted_timestamp)
 
-    def process_cube(self, cube_link):
-        cube_soup_object = self.get_website_soup_object(cube_link)
+    async def process_cube(self, cube_link):
+        cube_soup_object = await self.get_website_soup_object(cube_link)
         cube_json_object = self.get_json_query(cube_soup_object)
+
+        last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
+        today = datetime.datetime.today()
+        if (today - last_updated).days > 365:
+
+            return
 
         cube_name = cube_json_object['cube']['name']
         cube_cards = cube_json_object['cards']['mainboard']

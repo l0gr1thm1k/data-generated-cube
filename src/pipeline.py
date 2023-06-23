@@ -12,6 +12,6 @@ class DataGeneratedCubePipeline:
         self.cube_creator = CubeGenerator(data_sources=data_save_path, card_count=card_count,
                                           blacklist_path=blacklist_path)
 
-    def generate_cube(self):
-        self.scaper.get_cube_data()
+    async def generate_cube(self):
+        await self.scaper.get_cube_data()
         self.cube_creator.generate_cube()
