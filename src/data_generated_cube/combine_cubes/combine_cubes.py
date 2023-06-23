@@ -158,6 +158,8 @@ class CubeCombiner:
             elo_scores.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
         freq_frame['ELO'] = elo_scores
 
+        self.elo_fetcher.save_cache()
+
         return freq_frame
 
     @staticmethod

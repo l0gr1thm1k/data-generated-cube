@@ -128,7 +128,6 @@ class ELOFetcher:
     def update_card_elo(self, card_name: str):
         try:
             elo_score = self.get_card_elo_from_cube_cobra(card_name)
-            print(elo_score)
 
             if elo_score is not None or card_name not in self.elo_cache:
                 self.elo_cache[card_name] = {
