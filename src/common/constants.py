@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from data_generated_cube.common.common import ensure_dir_exists
+from common.common import ensure_dir_exists
 
 
-CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data"
-PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent.parent)
+CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data_generated_cube" / "data"
+PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent)
 DATA_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "data")
 RESULTS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "results")
 TXT_RESULTS_DIRECTORY_PATH = ensure_dir_exists(RESULTS_DIRECTORY_PATH / "txt")

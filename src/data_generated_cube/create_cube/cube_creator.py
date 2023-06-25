@@ -5,45 +5,40 @@ from loguru import logger
 from pathlib import Path
 from typing import Union
 
-from data_generated_cube.common.constants import (CSV_RESULTS_DIRECTORY_PATH, TXT_RESULTS_DIRECTORY_PATH, COLORS_SET,
-                                                  BLACKLIST_DIRECTORY_PATH, CARD_COLOR_MAP)
+from common.constants import (CSV_RESULTS_DIRECTORY_PATH, TXT_RESULTS_DIRECTORY_PATH, COLORS_SET,
+                              CARD_COLOR_MAP)
 
 
 class CubeCreator:
     card_count_dicts = []
 
-    def __init__(self, card_count, blacklist_path: Union[None, str] = None):
+    def __init__(self, card_count: int, data_directory: str, card_blacklist: Union[None, list] = None):
         self.card_count = card_count
-        self._set_black_list_path(blacklist_path)
+        self.data_dir = data_directory
+        self.card_blacklist = card_blacklist
 
-    def _set_black_list_path(self, file_path: Union[None, str]) -> None:
-        if not file_path:
-            self.blacklist_path = None
-        else:
-            self.blacklist_path = BLACKLIST_DIRECTORY_PATH / file_path
-
-    def make_cube(self, frame: pd.DataFrame, path: str):
+    def make_cube(self, frame: pd.DataFrame):
         """
         Create a cube from a dataframe of cards. Utilize the path to the cube to sample card counts per color.
 
+
         :param frame:
-        :param path:
         :return:
         """
-        card_counts = self.get_color_counts(frame, path)
+        card_counts = self.get_color_counts(frame, self.data_dir)
         self.card_count_dicts.append(card_counts)
         blacklist_updated_frame = self.remove_blacklist_cards(frame)
-        color_frames = self.make_colors_dict(blacklist_updated_frame, path)
+        color_frames = self.make_colors_dict(blacklist_updated_frame, self.data_dir)
 
         combined_frame = pd.concat([color_frames[xx][:card_counts[xx]] for xx in color_frames])
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]
-        txt_file_name = "".join([Path(path).name, "_cards.txt"])
+        txt_file_name = "".join([Path(self.data_dir).name, "_cards.txt"])
         with open(TXT_RESULTS_DIRECTORY_PATH / txt_file_name, 'w') as fstream:
             for name in combined_frame.name:
                 fstream.write(name + '\n')
 
-        csv_file_name = "".join([Path(path).name, "_dataframe.csv"])
+        csv_file_name = "".join([Path(self.data_dir).name, "_dataframe.csv"])
         combined_frame.to_csv(CSV_RESULTS_DIRECTORY_PATH / csv_file_name, index=False)
 
         logger.info(f"Cube created.", save_location=TXT_RESULTS_DIRECTORY_PATH / txt_file_name)
@@ -109,14 +104,12 @@ class CubeCreator:
         return color_counts
 
     def remove_blacklist_cards(self, frame: pd.DataFrame) -> pd.DataFrame:
-        if not self.blacklist_path:
+        if not self.card_blacklist:
 
             return frame
 
-        blacklist_cards = [blacklist_card_name.strip() for blacklist_card_name in
-                           open(self.blacklist_path, 'r').readlines()]
         logger.info(f"Removing blacklisted cards...")
-        filtered_frame = frame[~frame.name.isin(blacklist_cards)]
+        filtered_frame = frame[~frame.name.isin(self.card_blacklist)]
         filtered_frame.reset_index(inplace=True, drop=True)
 
         return filtered_frame

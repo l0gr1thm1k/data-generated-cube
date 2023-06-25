@@ -7,8 +7,8 @@ import requests
 from loguru import logger
 from retrying import retry
 
-from data_generated_cube.common.common import from_pickle, to_pickle
-from data_generated_cube.common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
+from common.common import from_pickle, to_pickle
+from common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
 from data_generated_cube.scryfall.scryfall_cache import ScryfallCache
 
 

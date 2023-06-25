@@ -1,7 +1,7 @@
 import pandas as pd
 
-from data_generated_cube.common.common import get_utc_time
-from data_generated_cube.common.constants import COLORS_SET, MERGED_RESULTS_DIRECTORY_PATH
+from common.common import get_utc_time
+from common.constants import COLORS_SET, MERGED_RESULTS_DIRECTORY_PATH
 
 
 class CuberMerger:

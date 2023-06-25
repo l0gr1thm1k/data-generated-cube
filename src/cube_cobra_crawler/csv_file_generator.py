@@ -1,14 +1,12 @@
 import pandas as pd
 
-from data_generated_cube.common.common import ensure_dir_exists
 from pathlib import Path
-from loguru import logger
 
 
 class CSVFileGenerator:
 
     def __init__(self, data_dir):
-        self.data_dir = ensure_dir_exists(data_dir)
+        self.data_dir = data_dir
         self.columns = ['name', 'CMC', 'Type', 'Color Category', 'Set', 'Collector Number', 'Rarity', 'maybeboard']
 
     def process_cube_data(self, list_of_card_dicts, cube_name):
