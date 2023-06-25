@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 from loguru import logger
 
-from data_generated_cube.common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
+from common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
 
 
 class ScryfallCache:

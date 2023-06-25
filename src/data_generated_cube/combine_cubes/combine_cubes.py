@@ -6,8 +6,8 @@ import numpy as np
 from loguru import logger
 from pathlib import Path
 
-from data_generated_cube.common.common import min_max_normalize_sklearn
-from data_generated_cube.common.constants import CARD_COLOR_MAP, CUBE_CREATION_RESOURCES_DIRECTORY
+from common.common import min_max_normalize_sklearn
+from common.constants import CARD_COLOR_MAP, CUBE_CREATION_RESOURCES_DIRECTORY
 from data_generated_cube.elo.elo_fetcher import ELOFetcher
 
 
@@ -15,8 +15,8 @@ class CubeCombiner:
     manual_card_color_mapping = pd.read_csv(CUBE_CREATION_RESOURCES_DIRECTORY / 'manually_mapped_color_cards.csv')
 
     def __init__(self, data_dir):
-        self.elo_fetcher = ELOFetcher()
         self.data_dir = data_dir
+        self.elo_fetcher = ELOFetcher()
 
     def combine_cubes_from_directory(self) -> pd.DataFrame:
         """

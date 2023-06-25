@@ -1,0 +1,15 @@
+{
+  "cardBlacklist": null,
+  "cardCount": 360,
+  "cubeCategory": "Vintage",
+  "cubeIds": [
+    "sol",
+    "opterown",
+    "6mo",
+    "hp360",
+    "highstakeschallenge",
+    "goblinballoonbrigade"
+  ],
+  "cubeName": "2023Q3DataGeneratedVintageCube",
+  "dataDirectory": "configSampleCrawl"
+}
