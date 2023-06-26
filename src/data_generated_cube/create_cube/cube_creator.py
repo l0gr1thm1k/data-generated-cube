@@ -40,7 +40,7 @@ class CubeCreator:
             csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
             csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
             combined_frame.to_csv(csv_file_path, index=False)
-            logger.info(f"Cube created.", save_location=csv_file_path)
+            logger.info(f"Cube created at file://{csv_file_path}")
 
         return combined_frame
 
