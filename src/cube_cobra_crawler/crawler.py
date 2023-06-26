@@ -22,21 +22,20 @@ class CubeCobraScraper(PipelineObject):
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self._set_data_dir(self.config.cubeName)
-        self.file_generator = CSVFileGenerator(self.data_dir)
+        self._set_data_directories(self.config.cubes)
 
-    def _set_data_dir(self, data_dir: str) -> None:
+    def _set_data_directories(self, cubes_list: list) -> None:
         """
         Set the data directory for the CSV file.
 
-        :param data_dir:
+        :param cubes_list:
         :return:
         """
-        data_dir_path = DATA_DIRECTORY_PATH / "cubes" / data_dir
-        self.data_dir = ensure_dir_exists(data_dir_path)
+        self.data_directories = [ensure_dir_exists(DATA_DIRECTORY_PATH / cube["cubeName"]) for cube in cubes_list]
 
         if self.config.overwrite:
-            self._clear_directory(self.data_dir)
+            for directory in self.data_directories:
+                self._clear_directory(directory)
 
     @staticmethod
     def _clear_directory(directory_path: str) -> None:
@@ -52,14 +51,20 @@ class CubeCobraScraper(PipelineObject):
                 file_path.unlink()
 
     async def get_cube_data(self) -> None:
+        for directory, cube in zip(self.data_directories, self.config.cubes):
+            await self.get_cube_data_from_single_source(directory, cube)
+
+    async def get_cube_data_from_single_source(self, source, cube) -> None:
         tasks = []
-        for cube_id in self.config.cubeIds:
-            task = asyncio.create_task(self.process_cube(f"https://cubecobra.com/cube/list/{cube_id}"))
+        file_generator_instance = CSVFileGenerator(source)
+        for cube_id in cube["cubeIds"]:
+            task = asyncio.create_task(self.process_cube(f"https://cubecobra.com/cube/list/{cube_id}",
+                                                         file_generator_instance))
             tasks.append(task)
 
         await asyncio.gather(*tasks)
 
-    async def process_cube(self, cube_link):
+    async def process_cube(self, cube_link, file_generator):
         cube_soup_object = await self.get_website_soup_object(cube_link)
         cube_json_object = self.get_json_query(cube_soup_object)
 
@@ -72,7 +77,7 @@ class CubeCobraScraper(PipelineObject):
         cube_name = cube_json_object['cube']['name']
         cube_cards = cube_json_object['cards']['mainboard']
 
-        self.file_generator.process_cube_data(cube_cards, cube_name)
+        file_generator.process_cube_data(cube_cards, cube_name)
 
         logger.info(f"Successfully processed cube {cube_link.replace('/list/', '/overview/')}")
 

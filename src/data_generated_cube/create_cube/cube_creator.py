@@ -10,23 +10,24 @@ from common.constants import (RESULTS_DIRECTORY_PATH, COLORS_SET,
 
 
 class CubeCreator:
-    card_count_dicts = []
 
     def __init__(self, card_count: int, data_directory: str, card_blacklist: Union[None, list] = None):
         self.card_count = card_count
         self.data_dir = data_directory
         self.card_blacklist = card_blacklist
+        self.card_count_dict = {}
 
-    def make_cube(self, frame: pd.DataFrame):
+    def make_cube(self, frame: pd.DataFrame, merge_frames_component: bool = False) -> pd.DataFrame:
         """
         Create a cube from a dataframe of cards. Utilize the path to the cube to sample card counts per color.
 
 
         :param frame:
+        :param merge_frames_component: a boolean to indicate whether the generated frame is part of a weighted
+        merge. If it is, we do not want to save the frame to a csv file.
         :return:
         """
-        card_counts = self.get_color_counts(frame, self.data_dir)
-        self.card_count_dicts.append(card_counts)
+        card_counts = self._set_color_counts(frame, self.data_dir)
         blacklist_updated_frame = self.remove_blacklist_cards(frame)
         color_frames = self.make_colors_dict(blacklist_updated_frame, self.data_dir)
 
@@ -34,15 +35,16 @@ class CubeCreator:
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]
 
-        csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
-        csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
-        combined_frame.to_csv(csv_file_path, index=False)
+        if not merge_frames_component:
 
-        logger.info(f"Cube created.", save_location=csv_file_path)
+            csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
+            csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
+            combined_frame.to_csv(csv_file_path, index=False)
+            logger.info(f"Cube created.", save_location=csv_file_path)
 
         return combined_frame
 
-    def get_color_counts(self, frame, directory) -> dict:
+    def _set_color_counts(self, frame, directory) -> dict:
         """
 
         :return:
@@ -54,6 +56,8 @@ class CubeCreator:
             color_counts[color] = self.get_normalized_card_count(color, frame, number_of_sampled_cubes)
 
         color_counts = self.adjust_color_counts(color_counts)
+
+        self.card_count_dict = color_counts
 
         return color_counts
 
