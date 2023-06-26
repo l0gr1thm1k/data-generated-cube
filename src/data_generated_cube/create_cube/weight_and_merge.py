@@ -1,18 +1,17 @@
 import pandas as pd
 
-from common.common import get_utc_time
 from common.constants import COLORS_SET, RESULTS_DIRECTORY_PATH
 
 
 class CuberMerger:
 
-    def __init__(self):
-        pass
+    def __init__(self, cube_name):
+        self.cube_name = cube_name
 
-    def weight_and_merge_frames(self, frame_list, card_count_dicts):
+    def weight_and_merge_frames(self, frame_list, card_count_dicts, weights):
         unique_cards = self.get_unique_cards(frame_list)
         columns = frame_list[0].columns
-        weighted_frame = self.calculate_weighted_frame(unique_cards, frame_list, columns)
+        weighted_frame = self.calculate_weighted_frame(unique_cards, frame_list, columns, weights)
         averaged_color_frames = self.average_card_counts(weighted_frame, card_count_dicts)
         concatted_weighted_frame = self.concatenate_frames(averaged_color_frames)
         self.save_frame_to_file(concatted_weighted_frame)
@@ -27,10 +26,10 @@ class CuberMerger:
 
         return list(unique_cards)
 
-    def calculate_weighted_frame(self, unique_cards, frame_list, columns):
+    def calculate_weighted_frame(self, unique_cards, frame_list, columns, weights):
         card_data = []
         for card in unique_cards:
-            card_data.append(self.process_card(card, frame_list))
+            card_data.append(self.process_card(card, frame_list, weights))
 
         weighted_frame = pd.DataFrame(columns=columns, data=card_data)
         weighted_frame.sort_values(['Weighted Rank', 'Inclusion Rate', 'ELO'], ascending=[False, False, False],
@@ -40,14 +39,14 @@ class CuberMerger:
         return weighted_frame
 
     @staticmethod
-    def process_card(card, frame_list):
+    def process_card(card, frame_list, cube_weights):
         card_occurrences = [frame[frame.name == card] for frame in frame_list]
         weights = 0
         occurrence = None
-        for occurrence_frame in card_occurrences:
+        for occurrence_frame, weight in zip(card_occurrences, cube_weights):
             try:
                 occurrence = occurrence_frame.iloc[0]
-                weights += occurrence['Weighted Rank']
+                weights += occurrence['Weighted Rank'] * weight
             except:
                 pass
         frame_list[0].loc[occurrence.name, 'Weighted Rank'] = round(weights / len(frame_list), 4)
@@ -78,14 +77,8 @@ class CuberMerger:
     def concatenate_frames(averaged_color_frames):
         return pd.concat(averaged_color_frames)
 
-    @staticmethod
-    def save_frame_to_file(concatted_weighted_frame):
+    def save_frame_to_file(self, concatted_weighted_frame):
 
-        csv_file_path = str(RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.csv")
-        txt_file_path = str(RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.txt")
-
-        with open(txt_file_path, 'w') as fstream:
-            for name in concatted_weighted_frame.name:
-                fstream.write(name + '\n')
+        csv_file_path = str(RESULTS_DIRECTORY_PATH / f"{self.cube_name}.csv")
         concatted_weighted_frame.to_csv(csv_file_path, index=False)
 
