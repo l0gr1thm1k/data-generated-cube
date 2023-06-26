@@ -5,7 +5,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Union
 
-from common.constants import (CSV_RESULTS_DIRECTORY_PATH, TXT_RESULTS_DIRECTORY_PATH, COLORS_SET,
+from common.constants import (RESULTS_DIRECTORY_PATH, COLORS_SET,
                               CARD_COLOR_MAP)
 
 
@@ -33,15 +33,12 @@ class CubeCreator:
         combined_frame = pd.concat([color_frames[xx][:card_counts[xx]] for xx in color_frames])
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]
-        txt_file_name = "".join([Path(self.data_dir).name, "_cards.txt"])
-        with open(TXT_RESULTS_DIRECTORY_PATH / txt_file_name, 'w') as fstream:
-            for name in combined_frame.name:
-                fstream.write(name + '\n')
 
-        csv_file_name = "".join([Path(self.data_dir).name, "_dataframe.csv"])
-        combined_frame.to_csv(CSV_RESULTS_DIRECTORY_PATH / csv_file_name, index=False)
+        csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
+        csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
+        combined_frame.to_csv(csv_file_path, index=False)
 
-        logger.info(f"Cube created.", save_location=TXT_RESULTS_DIRECTORY_PATH / txt_file_name)
+        logger.info(f"Cube created.", save_location=csv_file_path)
 
         return combined_frame
 

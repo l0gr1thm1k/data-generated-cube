@@ -97,7 +97,6 @@ class CubeConfig:
 
     # Enables IDE autocompletion
     metadata: CubeConfigSettingGroup
-    sources: CubeConfigSettingGroup
 
     def __init__(self, cube_config: str = None) -> None:
 

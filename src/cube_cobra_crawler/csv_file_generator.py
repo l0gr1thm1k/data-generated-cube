@@ -1,3 +1,5 @@
+import re
+
 import pandas as pd
 
 from pathlib import Path
@@ -21,7 +23,8 @@ class CSVFileGenerator:
         for card_dict in list_of_card_dicts:
             rows.append(self.generate_row_from_dict(card_dict))
         df = pd.DataFrame.from_records(rows, columns=self.columns)
-        df.to_csv(Path(self.data_dir) / f"{cube_name}.csv", index=False)
+        file_name = re.sub(r"(\s+|/)", '_', cube_name)
+        df.to_csv(Path(self.data_dir) / f"{file_name}.csv", index=False)
 
     def generate_row_from_dict(self, card_dict: dict) -> list:
         """

@@ -4,13 +4,9 @@ from common.common import ensure_dir_exists
 
 
 CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data_generated_cube" / "data"
-PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent)
+PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent.parent)
 DATA_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "data")
 RESULTS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "results")
-TXT_RESULTS_DIRECTORY_PATH = ensure_dir_exists(RESULTS_DIRECTORY_PATH / "txt")
-CSV_RESULTS_DIRECTORY_PATH = ensure_dir_exists(RESULTS_DIRECTORY_PATH / "csv")
-MERGED_RESULTS_DIRECTORY_PATH = ensure_dir_exists(RESULTS_DIRECTORY_PATH / "merged")
-BLACKLIST_DIRECTORY_PATH = ensure_dir_exists(DATA_DIRECTORY_PATH / "blacklists")
 
 COLORS_SET = {"White", "Blue", "Black", "Red", "Green", "Multicolored", "Colorless", "Land"}
 CARD_COLOR_MAP = {

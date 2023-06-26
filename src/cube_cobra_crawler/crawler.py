@@ -18,26 +18,24 @@ from pipeline_object.pipeline_object import PipelineObject
 
 
 class CubeCobraScraper(PipelineObject):
-    base_url = 'https://cubecobra.com/search/card%3A%22black%20lotus%22?order=pop&ascending=false'
 
     @process_args
-    def __init__(self, config: Union[str, CubeConfig], overwrite: bool = False):
+    def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self._set_data_dir(self.config.dataDirectory, overwrite=overwrite)
+        self._set_data_dir(self.config.cubeName)
         self.file_generator = CSVFileGenerator(self.data_dir)
 
-    def _set_data_dir(self, data_dir: str, overwrite: bool) -> None:
+    def _set_data_dir(self, data_dir: str) -> None:
         """
         Set the data directory for the CSV file.
 
         :param data_dir:
-        overwrite: a boolean stating whether you wish to overwrite the data in an existing data directory
         :return:
         """
         data_dir_path = DATA_DIRECTORY_PATH / "cubes" / data_dir
         self.data_dir = ensure_dir_exists(data_dir_path)
 
-        if overwrite:
+        if self.config.overwrite:
             self._clear_directory(self.data_dir)
 
     @staticmethod
@@ -53,18 +51,32 @@ class CubeCobraScraper(PipelineObject):
             if file_path.is_file():
                 file_path.unlink()
 
-    async def get_cube_data(self):
-        page_soup = await self.get_website_soup_object(self.base_url)
-        cube_json_query = self.get_json_query(page_soup)
-        links = self.get_cube_links(cube_json_query)
+    async def get_cube_data(self) -> None:
         tasks = []
-        for link in links:
-            task = asyncio.create_task(self.process_cube(link))
+        for cube_id in self.config.cubeIds:
+            task = asyncio.create_task(self.process_cube(f"https://cubecobra.com/cube/list/{cube_id}"))
             tasks.append(task)
 
         await asyncio.gather(*tasks)
 
-        return links
+    async def process_cube(self, cube_link):
+        cube_soup_object = await self.get_website_soup_object(cube_link)
+        cube_json_object = self.get_json_query(cube_soup_object)
+
+        last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
+        today = datetime.datetime.today()
+        if (today - last_updated).days > 365:
+
+            return
+
+        cube_name = cube_json_object['cube']['name']
+        cube_cards = cube_json_object['cards']['mainboard']
+
+        self.file_generator.process_cube_data(cube_cards, cube_name)
+
+        logger.info(f"Successfully processed cube {cube_link.replace('/list/', '/overview/')}")
+
+        return cube_cards
 
     @staticmethod
     async def get_website_soup_object(target_url: str):
@@ -87,40 +99,6 @@ class CubeCobraScraper(PipelineObject):
 
         return json.loads(match)
 
-    def get_cube_links(self, json_query: dict):
-        cube_link_list = []
-        for cube in json_query['cubes']:
-            category = cube['categoryOverride'],
-            cube_id = self.get_cube_id(cube)
-            card_count = cube['cardCount']
-            last_updated = self.convert_timestamp(cube['date'])
-            today = datetime.datetime.today()
-
-            is_in_category = self.config.get('cubeCategory') in category
-            acceptable_card_range = int(self.config.cardCount * .9) <= card_count <= int(self.config.cardCount * 1.1)
-            updated_within_year = (today - last_updated).days < 365
-
-            if is_in_category and acceptable_card_range and updated_within_year:
-                cube_link_list.append(f'https://cubecobra.com/cube/list/{cube_id}')
-
-        return cube_link_list
-
-    @staticmethod
-    def get_cube_id(cube: dict) -> str:
-        """
-        Get the cube id from the cube json object. Try/Except for shortId fetch since not all cubes have
-        this property.
-
-        :param cube: The cube json object
-        :return: get back the cube's shortId if possible otherwise return the cube's id
-        """
-        try:
-            fetched_cube_id = cube['shortId']
-        except KeyError:
-            fetched_cube_id = cube['id']
-
-        return fetched_cube_id
-
     @staticmethod
     def convert_timestamp(timestamp: int) -> datetime.datetime:
         """
@@ -132,21 +110,4 @@ class CubeCobraScraper(PipelineObject):
         converted_timestamp = int(str(timestamp)[:10])
         return datetime.datetime.fromtimestamp(converted_timestamp)
 
-    async def process_cube(self, cube_link):
-        cube_soup_object = await self.get_website_soup_object(cube_link)
-        cube_json_object = self.get_json_query(cube_soup_object)
 
-        last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
-        today = datetime.datetime.today()
-        if (today - last_updated).days > 365:
-
-            return
-
-        cube_name = cube_json_object['cube']['name']
-        cube_cards = cube_json_object['cards']['mainboard']
-
-        self.file_generator.process_cube_data(cube_cards, cube_name)
-
-        logger.info(f"Successfully processed cube {cube_link}")
-
-        return cube_cards
