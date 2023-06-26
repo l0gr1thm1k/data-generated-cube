@@ -7,6 +7,7 @@ CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "da
 PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent.parent)
 DATA_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "data")
 RESULTS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "results")
+EXAMPLE_CONFIGS_DIRECTORY_PATH = PARENT_DIRECTORY / "src" / "cube_config" / "example_configs"
 
 COLORS_SET = {"White", "Blue", "Black", "Red", "Green", "Multicolored", "Colorless", "Land"}
 CARD_COLOR_MAP = {
