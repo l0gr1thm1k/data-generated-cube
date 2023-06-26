@@ -1,7 +1,7 @@
 import pandas as pd
 
 from common.common import get_utc_time
-from common.constants import COLORS_SET, MERGED_RESULTS_DIRECTORY_PATH
+from common.constants import COLORS_SET, RESULTS_DIRECTORY_PATH
 
 
 class CuberMerger:
@@ -81,8 +81,8 @@ class CuberMerger:
     @staticmethod
     def save_frame_to_file(concatted_weighted_frame):
 
-        csv_file_path = str(MERGED_RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.csv")
-        txt_file_path = str(MERGED_RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.txt")
+        csv_file_path = str(RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.csv")
+        txt_file_path = str(RESULTS_DIRECTORY_PATH / f"{get_utc_time()}_weighted_cube.txt")
 
         with open(txt_file_path, 'w') as fstream:
             for name in concatted_weighted_frame.name:

@@ -19,7 +19,7 @@ class CubeGenerator(PipelineObject):
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self._set_data_dir(self.config.dataDirectory)
+        self._set_data_dir(self.config.cubeName)
         self.cube_creator = CubeCreator(card_count=self.config.cardCount,
                                         data_directory=self.data_dir,
                                         card_blacklist=self.config.cardBlacklist)
@@ -39,7 +39,7 @@ class CubeGenerator(PipelineObject):
         If the `data_directory` attribute is not a string, it assumes multiple directories and calls
         the `generate_cubes_from_multiple_directories` method to generate the cube.
         """
-        if isinstance(self.config.dataDirectory, str):
+        if isinstance(self.config.cubeName, str):
             generated_cube = self.generate_cube_from_single_source()
         else:
             generated_cube = self.generate_cubes_from_multiple_sources()

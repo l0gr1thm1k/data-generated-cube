@@ -10,9 +10,9 @@ from pipeline_object.pipeline_object import PipelineObject
 class DataGeneratedCubePipeline(PipelineObject):
 
     @process_args
-    def __init__(self, config: Union[str, CubeConfig], overwrite: bool = False):
+    def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self.scaper = CubeCobraScraper(self.config, overwrite=overwrite)
+        self.scaper = CubeCobraScraper(self.config)
         self.cube_creator = CubeGenerator(self.config)
 
     async def run(self):
