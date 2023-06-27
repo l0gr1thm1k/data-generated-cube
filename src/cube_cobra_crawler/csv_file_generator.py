@@ -24,7 +24,10 @@ class CSVFileGenerator:
             rows.append(self.generate_row_from_dict(card_dict))
         df = pd.DataFrame.from_records(rows, columns=self.columns)
         file_name = re.sub(r"(\s+|/)", '_', cube_name)
-        df.to_csv(Path(self.data_dir) / f"{file_name}.csv", index=False)
+
+        initial_file_path = Path(self.data_dir) / f"{file_name}.csv"
+        cube_file_path = self.make_filepath_with_backoff(initial_file_path)
+        df.to_csv(cube_file_path, index=False)
 
     def generate_row_from_dict(self, card_dict: dict) -> list:
         """
@@ -131,3 +134,18 @@ class CSVFileGenerator:
             raise KeyError(f"Card {card_dict['details']['name']} does not have a board key.")
 
         return is_maybeboard
+
+    def make_filepath_with_backoff(self, target_file_path, backoff_level: int = 1):
+        """
+        Make a backup of a target file's path. We need to do this because we will often sample cubes with duplicate
+        names with things like '360 vintage cube' or '360 powered cube' and we don't want to overwrite the original.
+
+        :param target_file_path:
+        :param backoff_level:
+        :return:
+        """
+        if target_file_path.exists():
+            target_file_path = Path(self.data_dir) / f"{target_file_path.stem}_{backoff_level}.csv"
+            target_file_path = self.make_filepath_with_backoff(target_file_path, backoff_level + 1)
+
+        return target_file_path
