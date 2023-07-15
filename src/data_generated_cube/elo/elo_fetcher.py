@@ -34,10 +34,8 @@ class ELOFetcher:
         today = datetime.today()
         cube_updated_more_than_a_week_ago = False
 
-        if cache_data:
-            last_updated = cache_data.get('last_updated')
-            if last_updated:
-                cube_updated_more_than_a_week_ago = (today - last_updated).days > 7
+        if cache_data and cache_data.get('lastUpdated'):
+            cube_updated_more_than_a_week_ago = (today - cache_data['lastUpdated']).days > 7
 
         if cache_data is None or cache_data.get('elo') is None or cube_updated_more_than_a_week_ago:
             self.update_card_elo(card_name)
@@ -104,7 +102,6 @@ class ELOFetcher:
                         continue
                     if elo_score is not None:
                         break
-                logger.info(f"Elo score for {card_name} is {elo_score}")
 
         except KeyError:
             logger.debug(f"Scryfall data for {card_name} with id {scryfall_data['id']} not found in Cube Cobra. Backing off to direct API call to Scryfall")
@@ -134,6 +131,7 @@ class ELOFetcher:
                     "elo": elo_score,
                     "lastUpdated": datetime.now()
                 }
+            logger.info(f'ELO score for "{card_name}" updated to {elo_score}')
 
         except KeyError as e:
             logger.debug(f"Could not find card {card_name} in Cube Cobra data.", error=e)
