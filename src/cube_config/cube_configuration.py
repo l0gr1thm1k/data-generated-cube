@@ -104,8 +104,8 @@ class CubeConfig:
         if isinstance(cube_config, str):
             # Store filepath
             self._source = cube_config
-            with open(cube_config) as model_config_file:
-                cube_config = json.load(model_config_file)
+            with open(cube_config) as config_file:
+                cube_config = json.load(config_file)
         else:
             raise ValueError("Cube config supplied must be a string path to the target cube config json file")
 
@@ -142,7 +142,7 @@ class CubeConfig:
         :return: value
         """
 
-        if item.startswith('_') or item == 'model_type':
+        if item.startswith('_'):
             return object.__getattribute__(self, item)
         else:
             return object.__getattribute__(self, '_config')[item]
@@ -155,7 +155,7 @@ class CubeConfig:
         :param value: value to set
         """
 
-        if key.startswith('_') or key == 'model_type':
+        if key.startswith('_'):
             object.__setattr__(self, key, value)
         else:
             self._config[key] = value

@@ -1,11 +1,9 @@
 {
   "cubeName": "2023Q3DataGeneratedVintageCube",
-  "cubes": [
-    {
-      "cardBlacklist": null,
-      "cardCount": 360,
-      "cubeCategory": "Vintage",
-      "cubeIds": [
+  "cardBlacklist": null,
+  "cardCount": 360,
+  "cubeCategory": "Vintage",
+  "cubeIds": [
         "highstakeschallenge",
         "sol",
         "6m0",
@@ -99,12 +97,10 @@
         "1zph8",
         "4jvcp"
       ],
-      "cubeName": "2023Q3DataGeneratedVintageCube",
-      "overwrite": true
-    }
-  ],
   "overwrite": true,
-  "weights": [
-    1.0
+  "stages": [
+    "scrape",
+    "create",
+    "analyze"
   ]
 }

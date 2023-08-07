@@ -22,20 +22,21 @@ class CubeCobraScraper(PipelineObject):
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self._set_data_directories(self.config.cubes)
+        self._set_data_dir(self.config.cubeName)
+        self.file_generator = CSVFileGenerator(self.data_dir)
 
-    def _set_data_directories(self, cubes_list: list) -> None:
+    def _set_data_dir(self, data_dir: str) -> None:
         """
         Set the data directory for the CSV file.
 
-        :param cubes_list:
+        :param data_dir:
         :return:
         """
-        self.data_directories = [ensure_dir_exists(DATA_DIRECTORY_PATH / cube["cubeName"]) for cube in cubes_list]
+        data_dir_path = DATA_DIRECTORY_PATH / data_dir
+        self.data_dir = ensure_dir_exists(data_dir_path)
 
         if self.config.overwrite:
-            for directory in self.data_directories:
-                self._clear_directory(directory)
+            self._clear_directory(self.data_dir)
 
     @staticmethod
     def _clear_directory(directory_path: str) -> None:
@@ -52,45 +53,37 @@ class CubeCobraScraper(PipelineObject):
 
     async def get_cube_data(self) -> None:
         if "scrape" in self.config.stages:
-            for directory, cube in zip(self.data_directories, self.config.cubes):
-                await self.get_cube_data_from_single_source(directory, cube)
+
+            tasks = []
+            for cube_id in self.config.cubeIds:
+                task = asyncio.create_task(self.process_cube(f"https://cubecobra.com/cube/list/{cube_id}"))
+                tasks.append(task)
+            await asyncio.gather(*tasks)
+
         else:
             logger.info("Skipping scrape data stage")
 
-            return
-
-    async def get_cube_data_from_single_source(self, source, cube) -> None:
-        tasks = []
-        file_generator_instance = CSVFileGenerator(source)
-        for cube_id in cube["cubeIds"]:
-            task = asyncio.create_task(self.process_cube(f"https://cubecobra.com/cube/list/{cube_id}",
-                                                         file_generator_instance))
-            tasks.append(task)
-
-        await asyncio.gather(*tasks)
-
-    async def process_cube(self, cube_link, file_generator):
+    async def process_cube(self, cube_link: str) -> None:
+        cube_overview_link = cube_link.replace('/list/', '/overview/')
         cube_soup_object = await self.get_website_soup_object(cube_link)
+
         try:
             cube_json_object = self.get_json_query(cube_soup_object)
         except AttributeError:
-            logger.warning(f"Failed to process cube {cube_link.replace('/list/', '/overview/')}")
+            logger.warning(f"Failed to process cube {cube_overview_link}")
             return
 
         last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
         today = datetime.datetime.today()
-        if (today - last_updated).days > 365:
 
-            return
+        if (today - last_updated).days <= 365:
+            cube_name = cube_json_object['cube']['name']
+            cube_cards = cube_json_object['cards']['mainboard']
 
-        cube_name = cube_json_object['cube']['name']
-        cube_cards = cube_json_object['cards']['mainboard']
+            self.file_generator.process_cube_data(cube_cards, cube_name)
+            logger.info(f"Successfully processed cube {cube_overview_link}")
 
-        file_generator.process_cube_data(cube_cards, cube_name)
-
-        logger.info(f"Successfully processed cube {cube_link.replace('/list/', '/overview/')}")
-
-        return cube_cards
+            return cube_cards
 
     @staticmethod
     async def get_website_soup_object(target_url: str):
@@ -123,5 +116,3 @@ class CubeCobraScraper(PipelineObject):
         """
         converted_timestamp = int(str(timestamp)[:10])
         return datetime.datetime.fromtimestamp(converted_timestamp)
-
-
