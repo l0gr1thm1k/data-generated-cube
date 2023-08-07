@@ -17,14 +17,13 @@ class CubeCreator:
         self.card_blacklist = card_blacklist
         self.card_count_dict = {}
 
-    def make_cube(self, frame: pd.DataFrame, merge_frames_component: bool = False) -> pd.DataFrame:
+    def make_cube(self, frame: pd.DataFrame) -> pd.DataFrame:
         """
         Create a cube from a dataframe of cards. Utilize the path to the cube to sample card counts per color.
 
 
         :param frame:
-        :param merge_frames_component: a boolean to indicate whether the generated frame is part of a weighted
-        merge. If it is, we do not want to save the frame to a csv file.
+
         :return:
         """
         card_counts = self._set_color_counts(frame, self.data_dir)
@@ -35,12 +34,10 @@ class CubeCreator:
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]
 
-        if not merge_frames_component:
-
-            csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
-            csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
-            combined_frame.to_csv(csv_file_path, index=False)
-            logger.info(f"Cube created at file://{csv_file_path}")
+        csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
+        csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
+        combined_frame.to_csv(csv_file_path, index=False)
+        logger.info(f"Cube created at file://{csv_file_path}")
 
         return combined_frame
 
