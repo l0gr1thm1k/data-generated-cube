@@ -51,8 +51,13 @@ class CubeCobraScraper(PipelineObject):
                 file_path.unlink()
 
     async def get_cube_data(self) -> None:
-        for directory, cube in zip(self.data_directories, self.config.cubes):
-            await self.get_cube_data_from_single_source(directory, cube)
+        if "scrape" in self.config.stages:
+            for directory, cube in zip(self.data_directories, self.config.cubes):
+                await self.get_cube_data_from_single_source(directory, cube)
+        else:
+            logger.info("Skipping scrape data stage")
+
+            return
 
     async def get_cube_data_from_single_source(self, source, cube) -> None:
         tasks = []
@@ -66,7 +71,11 @@ class CubeCobraScraper(PipelineObject):
 
     async def process_cube(self, cube_link, file_generator):
         cube_soup_object = await self.get_website_soup_object(cube_link)
-        cube_json_object = self.get_json_query(cube_soup_object)
+        try:
+            cube_json_object = self.get_json_query(cube_soup_object)
+        except AttributeError:
+            logger.warning(f"Failed to process cube {cube_link.replace('/list/', '/overview/')}")
+            return
 
         last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
         today = datetime.datetime.today()
