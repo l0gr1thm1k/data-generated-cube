@@ -11,3 +11,5 @@ src/data_generated_cube/data/default-cards-*.json
 data/
 
 results/
+
+analysis/

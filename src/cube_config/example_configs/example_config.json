@@ -1,5 +1,5 @@
 {
-  "cubeName": "2023Q3DataGeneratedVintageCube",
+  "cubeName": "example_data_generated_cube",
   "cubes": [
     {
       "cardBlacklist": null,
@@ -12,6 +12,7 @@
         "opterown",
         "hp360",
         "goblinballoonbrigade",
+        "connecttheclues",
         "coldbrewkale",
         "e7r",
         "anarky",
@@ -23,6 +24,7 @@
         "x3s",
         "exval",
         "n47t",
+        "maeg0",
         "cs",
         "88bq",
         "3ve",
@@ -53,6 +55,7 @@
         "powermax",
         "7v06",
         "ml3",
+        "36kkn",
         "3agm3",
         "aacu",
         "Aiken0132sCube",
@@ -62,7 +65,6 @@
         "o04",
         "kawy",
         "c7ae",
-        "2n63h",
         "20v7n",
         "74y",
         "18w78",
@@ -84,8 +86,8 @@
         "14xd",
         "452sp",
         "3vq08",
+        "CubebyLel3bo",
         "9tbj",
-        "1ltas",
         "vvk",
         "qne",
         "20o41",
@@ -97,32 +99,17 @@
         "1zph8",
         "4jvcp"
       ],
-      "cubeName": "2023Q3CommunityCards",
-      "overwrite": false
-    },
-    {
-      "cardBlacklist": null,
-      "cardCount": 360,
-      "cubeCategory": "Vintage",
-      "cubeIds": [
-        "highstakeschallenge",
-        "sol",
-        "6m0",
-        "opterown",
-        "hp360",
-        "goblinballoonbrigade",
-        "coldbrewkale",
-        "e7r",
-        "anarky",
-        "2fah7"
-      ],
-      "cubeName": "2023Q3NewCards",
-      "overwrite": false
+      "cubeName": "example_data_generated_cube",
+      "overwrite": true
     }
   ],
-  "overwrite": false,
+  "overwrite": true,
+  "stages": [
+    "scrape",
+    "create",
+    "analyze"
+  ],
   "weights": [
-    0.25,
-    0.75
+    1.0
   ]
 }

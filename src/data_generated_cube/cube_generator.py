@@ -9,7 +9,7 @@ from data_generated_cube.create_cube.cube_creator import CubeCreator
 from data_generated_cube.create_cube.weight_and_merge import CuberMerger
 from common.args import process_args
 from common.common import ensure_dir_exists
-from common.constants import DATA_DIRECTORY_PATH
+from common.constants import DATA_DIRECTORY_PATH, RESULTS_DIRECTORY_PATH
 from cube_config.cube_configuration import CubeConfig
 from pipeline_object.pipeline_object import PipelineObject
 
@@ -35,10 +35,17 @@ class CubeGenerator(PipelineObject):
         If the `data_directory` attribute is not a string, it assumes multiple directories and calls
         the `generate_cubes_from_multiple_directories` method to generate the cube.
         """
-        if len(self.config.cubes) == 1:
-            generated_cube = self.generate_cube_from_single_source(self.config.cubes[0])
+        if "create" not in self.config.stages:
+            try:
+                generated_cube = pd.read_csv(str(RESULTS_DIRECTORY_PATH / self.config.cubeName) + ".csv")
+                logger.info("Skipping create cube stage")
+            except FileNotFoundError:
+                raise FileNotFoundError("No cube found, please run create cube stage")
         else:
-            generated_cube = self.generate_cubes_from_multiple_sources()
+            if len(self.config.cubes) == 1:
+                generated_cube = self.generate_cube_from_single_source(self.config.cubes[0])
+            else:
+                generated_cube = self.generate_cubes_from_multiple_sources()
 
         return generated_cube
 
