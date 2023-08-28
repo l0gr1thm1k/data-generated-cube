@@ -39,7 +39,7 @@ class CubeAnalyzer(PipelineObject):
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
         self._set_analysis_directory()
-        self._set_data_dictionary()
+
         sns.set(style="whitegrid")
 
     def _set_analysis_directory(self) -> None:
@@ -111,6 +111,7 @@ class CubeAnalyzer(PipelineObject):
         Analyze the cube data. This is the main entry point for the CubeAnalyzer class, and generates a number of
         graphs and tables.
         """
+        self._set_data_dictionary()
         if "analyze" not in self.config.stages:
             logger.info("Skipping analyze data stage")
         else:
