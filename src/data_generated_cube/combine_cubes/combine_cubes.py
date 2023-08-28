@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 
 import numpy as np
@@ -17,6 +18,11 @@ class CubeCombiner:
     def __init__(self, data_dir):
         self.data_dir = data_dir
         self.elo_fetcher = ELOFetcher()
+        self.cube_weights = self.load_cube_weights()
+
+    def load_cube_weights(self):
+        with open(self.data_dir / 'cube_weights.json', 'r') as f:
+            return json.load(f)
 
     def combine_cubes_from_directory(self) -> pd.DataFrame:
         """
@@ -48,6 +54,11 @@ class CubeCombiner:
             chunk = pd.read_csv(file_path)
             chunk = self.remove_maybeboard_cards(chunk)
             chunk = self.manually_map_card_colors(chunk)
+
+            cube_id = os.path.basename(file_path).replace('.csv', '')
+            cube_weight = self.cube_weights.get(cube_id, 1)
+            chunk['Cube Weight'] = cube_weight
+
             chunk.to_csv(file_path, index=False)
 
             return chunk
@@ -118,12 +129,13 @@ class CubeCombiner:
         data = self.calculate_frequency(data)
         data = self.calculate_inclusion_rate(data)
         data = self.get_elo_scores(data)
+        data = self.calculate_card_weight(data)
         data['Log ELO'] = data['ELO'].apply(np.log)
         data['Log Inclusion Rate'] = data['Inclusion Rate'].apply(np.log)
         for new_col, norm_col in [('Normalized ELO', 'ELO'), ('Normalized Inclusion Rate', 'Inclusion Rate')]:
             data[new_col] = min_max_normalize_sklearn(data[norm_col])
         data['Inclusion Rate ELO Diff'] = data.apply(self.get_elo_coverage_diff, axis=1)
-        data['Weighted Rank'] = data['Inclusion Rate'] * data['Log ELO']
+        data['Weighted Rank'] = data['Log ELO'] * data['Card Weight']
 
         data = data.drop_duplicates(subset=['name'])
 
@@ -161,6 +173,17 @@ class CubeCombiner:
         self.elo_fetcher.save_cache()
 
         return freq_frame
+
+    @staticmethod
+    def calculate_card_weight(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculates the card weight based on the weight of the cubes in which it appears.
+        """
+        card_weight_series = data.groupby('name')['Cube Weight'].sum()
+        data = data.merge(card_weight_series.rename('Card Weight'), left_on='name', right_index=True)
+        data['Card Weight'] = np.log(data['Card Weight'])
+
+        return data
 
     @staticmethod
     def get_elo_coverage_diff(row):

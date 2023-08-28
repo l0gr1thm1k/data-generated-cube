@@ -34,6 +34,8 @@ class CubeCreator:
         combined_frame = self.sort_and_reset_dataframe_index(combined_frame)
         combined_frame = combined_frame[:self.card_count]
 
+        combined_frame.drop(columns=['Cube Weight'], inplace=True)
+
         csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
         csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
         combined_frame.to_csv(csv_file_path, index=False)
