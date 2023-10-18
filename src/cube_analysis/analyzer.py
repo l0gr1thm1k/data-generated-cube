@@ -210,9 +210,14 @@ class CubeAnalyzer(PipelineObject):
         :return: a string representing the cleaned card type line.
         """
         type_line = row.Type
-        cleaned_type_line = self.legendary_regex.sub("", self.hyphen_regex.sub("", type_line))
-        if " " in cleaned_type_line:
-            return self.remove_types_regex.sub("", cleaned_type_line)
+        try:
+
+            cleaned_type_line = self.legendary_regex.sub("", self.hyphen_regex.sub("", type_line))
+            if " " in cleaned_type_line:
+                return self.remove_types_regex.sub("", cleaned_type_line)
+        except Exception as e:
+            logger.info(f"Failed parsing type line {type_line} for card {row.name}")
+            raise Exception(e)
 
         return cleaned_type_line
 

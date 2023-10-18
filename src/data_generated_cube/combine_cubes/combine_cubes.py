@@ -136,6 +136,7 @@ class CubeCombiner:
             data[new_col] = min_max_normalize_sklearn(data[norm_col])
         data['Inclusion Rate ELO Diff'] = data.apply(self.get_elo_coverage_diff, axis=1)
         data['Weighted Rank'] = data['Log ELO'] * data['Card Weight']
+        data['Weighted Rank'] = min_max_normalize_sklearn(data['Weighted Rank'])
 
         data = data.drop_duplicates(subset=['name'])
 
