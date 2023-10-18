@@ -86,7 +86,7 @@ class CubeCobraScraper(PipelineObject):
         today = datetime.datetime.today()
 
         if (today - last_updated).days <= 365:
-            cube_weight = self.get_cube_weight(cube_json_object, cube_identifier)
+            cube_weight = await self.get_cube_weight(cube_json_object, cube_identifier)
             async with lock:
                 self.cube_weights[cube_identifier] = cube_weight
 
@@ -128,9 +128,9 @@ class CubeCobraScraper(PipelineObject):
         converted_timestamp = int(str(timestamp)[:10])
         return datetime.datetime.fromtimestamp(converted_timestamp)
 
-    def get_cube_weight(self, cube_json: dict, identifier) -> float:
+    async def get_cube_weight(self, cube_json: dict, identifier) -> float:
         cube_follower_weight = self.get_cube_follower_weight(cube_json)
-        cube_update_weight = self.feed_parser.calculate_update_weight(identifier)
+        cube_update_weight = await self.feed_parser.calculate_update_weight(identifier)
 
         return round(cube_follower_weight + cube_update_weight, 4)
 

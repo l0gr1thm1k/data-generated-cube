@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
@@ -11,8 +11,8 @@ class RSSFeedParser:
         self.update_window_days = update_window_days
         self.now = datetime.utcnow()
 
-    def calculate_update_weight(self, cube_identifier):
-        rss_feed = self.fetch_rss_feed(cube_identifier)
+    async def calculate_update_weight(self, cube_identifier):
+        rss_feed = await self.fetch_rss_feed(cube_identifier)
         items = self.parse_feed_for_updates(rss_feed)
         updates = self.get_cube_updates_from_list(items)
         weights = self.get_update_weights(updates)
@@ -21,10 +21,11 @@ class RSSFeedParser:
         return weight
 
     @staticmethod
-    def fetch_rss_feed(cube_identifier: str):
+    async def fetch_rss_feed(cube_identifier: str):
         url = f"https://cubecobra.com/cube/rss/{cube_identifier}"
-        response = requests.get(url)
-        return response.content
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                return await response.text()
 
     @staticmethod
     def parse_feed_for_updates(xml_content):
