@@ -136,6 +136,8 @@ class CubeCobraScraper(PipelineObject):
 
     def get_cube_follower_weight(self, cube_json_object: dict) -> float:
         follower_count = self.get_follower_count(cube_json_object)
+        if follower_count < 1:
+            follower_count = 1
 
         return np.log(follower_count) + 1
 
