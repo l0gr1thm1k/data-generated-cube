@@ -19,5 +19,5 @@ class DataGeneratedCubePipeline(PipelineObject):
 
     async def run(self):
         await self.scaper.get_cube_data()
-        self.cube_creator.generate_cube()
+        await self.cube_creator.generate_cube()
         self.analyzer.analyze()

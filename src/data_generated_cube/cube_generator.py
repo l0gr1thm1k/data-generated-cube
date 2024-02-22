@@ -24,7 +24,7 @@ class CubeGenerator(PipelineObject):
         data_dir_path = DATA_DIRECTORY_PATH / cube_name
         self.data_dir = ensure_dir_exists(data_dir_path)
 
-    def generate_cube(self) -> pd.DataFrame:
+    async def generate_cube(self) -> pd.DataFrame:
         """
         Generates a cube based on the specified data directory/directories.
 
@@ -41,7 +41,7 @@ class CubeGenerator(PipelineObject):
             cube_creator_instance = CubeCreator(card_count=self.config.get("cardCount"),
                                                 data_directory=self.data_dir,
                                                 card_blacklist=self.config.get("cardBlacklist"))
-            frames = cube_combiner_instance.combine_cubes_from_directory()
+            frames = await cube_combiner_instance.combine_cubes_from_directory()
             generated_cube = cube_creator_instance.make_cube(frames)
 
         return generated_cube

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import pandas as pd
@@ -24,7 +25,7 @@ class CubeCombiner:
         with open(self.data_dir / 'cube_weights.json', 'r') as f:
             return json.load(f)
 
-    def combine_cubes_from_directory(self) -> pd.DataFrame:
+    async def combine_cubes_from_directory(self) -> pd.DataFrame:
         """
         Combines cubes from a specified directory into a single DataFrame. Additionally, perform cleaning and filtering.
 
@@ -44,7 +45,7 @@ class CubeCombiner:
             logger.debug("No cubes found in the specified directory...", directory=self.data_dir)
             concatted_frame = pd.DataFrame()
 
-        concatted_frame = self.get_new_columns(concatted_frame)
+        concatted_frame = await self.get_new_columns(concatted_frame)
 
         return concatted_frame
 
@@ -112,7 +113,7 @@ class CubeCombiner:
 
             raise KeyError(f"Missing a key {color_string}: {err}")
 
-    def get_new_columns(self, data: pd.DataFrame) -> pd.DataFrame:
+    async def get_new_columns(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Adds new columns to the DataFrame. The only required column in the data is 'name'.
 
@@ -128,7 +129,7 @@ class CubeCombiner:
         """
         data = self.calculate_frequency(data)
         data = self.calculate_inclusion_rate(data)
-        data = self.get_elo_scores(data)
+        data = await self.update_elo_scores(data)
         data = self.calculate_card_weight(data)
         data['Log ELO'] = data['ELO'].apply(np.log)
         data['Log Inclusion Rate'] = data['Inclusion Rate'].apply(np.log)
@@ -165,13 +166,26 @@ class CubeCombiner:
     def get_number_of_cubes_sampled(directory_path) -> int:
         return len(list(Path(directory_path).glob('*.csv')))
 
-    def get_elo_scores(self, freq_frame):
-        elo_scores = []
-        for index in range(freq_frame.shape[0]):
-            elo_scores.append(self.elo_fetcher.get_card_elo(freq_frame.name[index]))
-        freq_frame['ELO'] = elo_scores
+    async def update_elo_scores(self, freq_frame) -> None:
 
+        async def update_elo_cache(fetcher, cards):
+            tasks = [fetcher.get_card_elo(card) for card in cards if card is not None]
+
+            return await asyncio.gather(*tasks)
+
+        unique_cards = freq_frame.name.unique()
+        logger.info(f'Updating ELO scores for {len(unique_cards)} unique cards...')
+        await update_elo_cache(self.elo_fetcher, unique_cards)
         self.elo_fetcher.save_cache()
+        elo_scores = []
+        for card in freq_frame.name:
+            if card is None:
+                elo_scores.append(0.0)
+            else:
+                elo = await self.elo_fetcher.get_card_elo(card)
+                elo_scores.append(elo)
+
+        freq_frame['ELO'] = elo_scores
 
         return freq_frame
 
