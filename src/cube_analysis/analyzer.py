@@ -185,6 +185,9 @@ class CubeAnalyzer(PipelineObject):
         :param columns: a list of columns to display in the table. If None, the default columns are used.
         :return: get back a string markdown table.
         """
+        if dataframe.empty:
+            return ""
+
         default_columns = ['Card Name', 'Inclusion Rate', 'ELO', 'Type', 'Color Category']
         if columns is None:
             columns = default_columns

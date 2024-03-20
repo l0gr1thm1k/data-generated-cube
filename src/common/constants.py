@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 
 from common.common import ensure_dir_exists
@@ -51,3 +53,8 @@ TYPE_PALETTE = {
     "Sorcery": "dimgray",
     "Land": "DarkGreen"
 }
+
+AWS_ACCESS_KEY_ID = os.environ.get("CUBE_COBRA_AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("CUBE_COBRA_AWS_SECRET_ACCESS_KEY")
+
+BLACKLIST_REGEX = r"""\b(white|black|blue|red|green|esper|grixis|naya|jund|bant|jeskai|temur|mardu|sultai|abzan|old school|oldschool|93|94|border|alpha|beta|antiquities|legends|pre.*modern|mono|frame|nostalgia|\sabu\s|data generated|pre[\b-]|connect the clues)\b"""

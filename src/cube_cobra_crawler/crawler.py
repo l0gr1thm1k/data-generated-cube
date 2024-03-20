@@ -1,5 +1,6 @@
 import aiohttp
 import asyncio
+import boto3
 import datetime
 import json
 import re
@@ -12,7 +13,7 @@ from typing import Union
 
 from common.args import process_args
 from common.common import ensure_dir_exists
-from common.constants import DATA_DIRECTORY_PATH
+from common.constants import DATA_DIRECTORY_PATH, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BLACKLIST_REGEX
 from cube_cobra_crawler.csv_file_generator import CSVFileGenerator
 from cube_cobra_crawler.rss_feed_crawler import RSSFeedParser
 from cube_config.cube_configuration import CubeConfig
@@ -58,6 +59,9 @@ class CubeCobraScraper(PipelineObject):
     async def get_cube_data(self) -> None:
         if "scrape" in self.config.stages:
 
+            if self.config.useCubeCobraBucket:
+                await self.update_cube_id_list()
+
             tasks = []
             lock = asyncio.Lock()
             for cube_id in self.config.cubeIds:
@@ -71,6 +75,38 @@ class CubeCobraScraper(PipelineObject):
         else:
             logger.info("Skipping scrape data stage")
 
+    async def update_cube_id_list(self) -> None:
+        logger.info("Fetching Cube Cobra AWS Bucket Data")
+        bucket_ids = self.fetch_cube_ids()
+        self.config.cubeIds = list(set(self.config.cubeIds + bucket_ids))
+
+    def fetch_cube_ids(self):
+        download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "aws_bucket_data.json")
+
+        self.download_file(bucket_name="cubecobra", object_key="cubes.json", download_path=download_path)
+        with open(download_path) as fstream:
+            data = json.load(fstream)
+        blacklist_regex = re.compile(BLACKLIST_REGEX, re.IGNORECASE)
+        ids = []
+        for cube in data:
+            if 3012 in cube['cards'] and 939 in cube['cards'] and 15981 in cube['cards'] and (
+                    self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) and len(cube["following"]) >= 1:
+                if not blacklist_regex.search(cube['name']):
+                    ids.append(cube['id'])
+        return ids
+
+    @staticmethod
+    def download_file(bucket_name, object_key, download_path):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+        )
+        try:
+            s3_client.download_file(bucket_name, object_key, download_path)
+        except Exception as e:
+            logger.info(f"An error occurred while downloading the file: {e}")
+
     async def process_cube(self, cube_identifier: str, lock) -> None:
         cube_overview_link = f"https://cubecobra.com/cube/overview/{cube_identifier}"
         cube_list_link = f"https://cubecobra.com/cube/list/{cube_identifier}"
@@ -82,7 +118,7 @@ class CubeCobraScraper(PipelineObject):
             logger.warning(f"Failed to process cube {cube_overview_link}")
             return
 
-        last_updated = self.convert_timestamp(cube_json_object['cube']['date'])
+        last_updated = await self.feed_parser.get_most_recent_update_date(cube_identifier)
         today = datetime.datetime.today()
 
         if (today - last_updated).days <= 365:
