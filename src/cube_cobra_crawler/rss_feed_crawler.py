@@ -70,3 +70,18 @@ class RSSFeedParser:
     def get_item_date(item):
         pub_date = item.find('pubDate').text
         return datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z")
+
+    async def get_most_recent_update_date(self, cube_identifier) -> str:
+        rss_feed = await self.fetch_rss_feed(cube_identifier)
+        items = self.parse_feed_for_updates(rss_feed)
+        return self.most_recent_mainboard_change(items)
+
+    def most_recent_mainboard_change(self, update_list) -> datetime:
+        update_date = self.now - timedelta(days=730)
+        for update in update_list:
+            if "Mainboard" in update.text:
+                update_date = self.get_item_date(update)
+                break
+
+        return update_date
+
