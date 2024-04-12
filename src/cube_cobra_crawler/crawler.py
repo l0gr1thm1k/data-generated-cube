@@ -29,6 +29,17 @@ class CubeCobraScraper(PipelineObject):
         self.file_generator = CSVFileGenerator(self.data_dir)
         self.feed_parser = RSSFeedParser()
         self.cube_weights = {}
+        self.power_map = {"Black Lotus": "5089ec1a-f881-4d55-af14-5d996171203b",
+                          "Mox Pearl": "824597b8-c89a-47ec-8526-7efc6e24ef0e",
+                          "Mox Sapphire": "d5ed1233-df87-4b90-8918-13922ec95249",
+                          "Mox Jet": "0677f49e-f8bf-4349-af52-2ccde9287c2e",
+                          "Mox Ruby": "ed85fa82-e4fa-434b-92a8-36b6075708d1",
+                          "Mox Emerald": "376ee366-e082-402f-b4db-6592fcfcacd2",
+                          "Ancestral Recall": "550c74d4-1fcb-406a-b02a-639a760a4380",
+                          "Time Walk": "d0209d3f-3f7e-4fd5-bce5-10bce6f29c86",
+                          "Mana Crypt": "2c63e4e1-89d2-4bc6-a232-94e75c4b1c8a",
+                          "Sol Ring": "6ad8011d-3471-4369-9d68-b264cc027487",
+                          }
 
     def _set_data_dir(self, data_dir: str) -> None:
         """
@@ -82,15 +93,19 @@ class CubeCobraScraper(PipelineObject):
 
     def fetch_cube_ids(self):
         download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "aws_bucket_data.json")
-
         self.download_file(bucket_name="cubecobra", object_key="cubes.json", download_path=download_path)
+
         with open(download_path) as fstream:
             data = json.load(fstream)
         blacklist_regex = re.compile(BLACKLIST_REGEX, re.IGNORECASE)
         ids = []
+        oracle_id_mapping = self.create_oracle_id_mapping()
+        power_card_indices = {oracle_id_mapping[oracle_id] for oracle_id in self.power_map.values()}
+
         for cube in data:
-            if 3012 in cube['cards'] and 939 in cube['cards'] and 15981 in cube['cards'] and (
-                    self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) and len(cube["following"]) >= 1:
+            if power_card_indices.issubset(set(cube['cards'])) and \
+                    (360 * .9 <= len(cube['cards']) <= 360 * 1.1) \
+                    and len(cube["following"]) >= 1:
                 if not blacklist_regex.search(cube['name']):
                     ids.append(cube['id'])
         return ids
@@ -106,6 +121,13 @@ class CubeCobraScraper(PipelineObject):
             s3_client.download_file(bucket_name, object_key, download_path)
         except Exception as e:
             logger.info(f"An error occurred while downloading the file: {e}")
+
+    def create_oracle_id_mapping(self) -> dict:
+        download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "indexToOracleMap.json")
+        self.download_file(bucket_name="cubecobra", object_key="indexToOracleMap.json", download_path=download_path)
+        with open(download_path) as fstream:
+            mapping = json.load(fstream)
+            return {v: int(k) for k, v in mapping.items()}
 
     async def process_cube(self, cube_identifier: str, lock) -> None:
         cube_overview_link = f"https://cubecobra.com/cube/overview/{cube_identifier}"
