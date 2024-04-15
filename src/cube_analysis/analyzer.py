@@ -33,7 +33,7 @@ class CubeAnalyzer(PipelineObject):
                         "Land": "T"}
     hyphen_regex = re.compile(r" [—-].*")
     legendary_regex = re.compile(r"Legendary ")
-    remove_types_regex = re.compile(r"(Artifact|Enchantment|Tribal|Snow) ")
+    remove_types_regex = re.compile(r"(Artifact|Enchantment|Tribal|Snow|World) ")
 
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
@@ -217,7 +217,7 @@ class CubeAnalyzer(PipelineObject):
 
             cleaned_type_line = self.legendary_regex.sub("", self.hyphen_regex.sub("", type_line))
             if " " in cleaned_type_line:
-                return self.remove_types_regex.sub("", cleaned_type_line)
+                return self.remove_types_regex.sub("", cleaned_type_line).rstrip()
         except Exception as e:
             logger.info(f"Failed parsing type line {type_line} for card {row.name}")
             raise Exception(e)

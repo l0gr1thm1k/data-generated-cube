@@ -104,7 +104,7 @@ class CubeCobraScraper(PipelineObject):
 
         for cube in data:
             if power_card_indices.issubset(set(cube['cards'])) and \
-                    (360 * .9 <= len(cube['cards']) <= 360 * 1.1) \
+                    (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
                     and len(cube["following"]) >= 1:
                 if not blacklist_regex.search(cube['name']):
                     ids.append(cube['id'])
