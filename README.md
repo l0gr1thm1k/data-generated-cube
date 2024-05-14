@@ -1,92 +1,101 @@
-# Data Generated CubeGenerator
-
-
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/danielsmtgdevelopment/data-generated-cube.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/danielsmtgdevelopment/data-generated-cube/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+# Data Generated Cube
 
 ***
 
-# Editing this README
+## Overview
+Data Generated Cube is a Python project designed to facilitate the generation and analysis of Magic: The Gathering 
+cubes from [Cube Cobra](https://cubecobra.com/landing) and [Scryfall](https://scryfall.com/) data  sources. This tool is 
+particularly useful for data scientists, analysts and the quantitatively minded enthusiast who seeks a deeper 
+understanding of cube construction within the cube format.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+I maintain a [cube generated using this pipeline](https://cubecobra.com/cube/overview/data), but it is capable of 
+creating cubes of any size and category.
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+##  Requirements
+* Python 3.7 or higher
+* Dependencies listed in [requirements.txt](https://github.com/l0gr1thm1k/data-generated-cube/blob/github/requirements.txt)
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+1. Clone the repository:
 
+    ```sh 
+    git clone https://github.com/l0gr1thm1k/data-generated-cube.git
+   ```
+
+2. Navigate to the project directory. The precise path you use will depend on where you cloned the repository. For 
+   example, if you cloned the repository to your home directory, you would use the following command:
+    
+    ```sh
+    cd data-generated-cube
+   ```
+
+3. Install the required dependencies:
+
+    ```sh
+    pip install -r requirements.txt
+   ```
+   
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+The cube creation pipeline takes in a JSON configuration file of the following form. 
+
+```json
+{
+  "cubeName": "example_data_generated_cube",
+  "cardBlacklist": null,
+  "cardCount": 360,
+  "cubeCategory": "Vintage",
+  "cubeIds": [
+    "modovintage",
+    "wtwlf123",
+    "synergy",
+    "LSVCubeInit",
+    "AlphaFrog"
+],
+  "overwrite": true,
+  "stages": [
+    "scrape",
+    "create",
+    "analyze"
+  ],
+  "useCubeCobraBucket": true
+}
+```
+
+You can see full example configuration files [here](https://github.com/l0gr1thm1k/data-generated-cube/tree/github/src/cube_config/example_configs). Here is a table breaking down each
+key in the configuration file:
+
+| Key | Description | Example | Notes                                                                                                                                                                                                           |
+| --- | --- | --- |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cubeName | The name of the cube you are generating. | example_data_generated_cube | any string will do                                                                                                                                                                                              |
+| cardBlacklist | A list of card names that you do not want to include in the cube. | ["Black Lotus", "Mox Pearl"] | Can be null or a list of string values                                                                                                                                                                          |
+| cardCount | The number of cards you want in the cube. | 360 | This will generate the cube at the target size but you may still sample cubes at +/- 10% of this size                                                                                                           |
+| cubeCategory | The cube category you want to generate. | Vintage | This is the cube category you want to generate. Options are Vintage, Powered, Unpowered, Pauper, Peasant, Budget, Silver-bordered, Commander, Battle Box, Multiplayer, Judge Tower                              |
+| cubeIds | A list of cube IDs from Cube Cobra that you want to include in the cube. | ["modovintage", "wtwlf123", "synergy", "LSVCubeInit", "AlphaFrog"] | This is a list of cube IDs from Cube Cobra that you want to include in the cube. It can be the shortID which are generally human readable or the long IDs, which are GUID values.                               |
+| overwrite | A boolean value indicating whether you want to overwrite the cube if it already exists. | true | If true, the cube will be overwritten if it already exists. If false, the cube will not be overwritten if it already exists.                                                                                    |
+| stages | A list of stages you want to run in the pipeline. | ["scrape", "create", "analyze"] | This is a list of <br/>stages you want to run in the pipeline. Options are scrape, create, and analyze. You can skip 'scrape' for example if you just want to regenerate the cube with previously crawled data. |
+| useCubeCobraBucket | A boolean value indicating whether you want to use the Cube Cobra bucket. | true | If true, the Cube Cobra bucket will be used. If false, the Cube Cobra bucket will not be used.                                                                                                                  |
+
+### Using the Cube Cobra Bucket
+The Cube Cobra bucket is a bucket in the Cube Cobra S3 bucket that contains all the cube data. Ths project uses the 
+bucket data to streamline the process of gathering cubes to sample for the data generated cube. The bucket requires two 
+variables to be set in your environment. 
+
+1. [CUBE_COBRA_AWS_ACCESS_KEY_ID](https://github.com/l0gr1thm1k/data-generated-cube/blob/f1fb9e6aa0513ea03ffa2800c57083081b44a9df/src/common/constants.py#L59)
+2. [CUBE_COBRA_AWS_SECRET_ACCESS_KEY](https://github.com/l0gr1thm1k/data-generated-cube/blob/f1fb9e6aa0513ea03ffa2800c57083081b44a9df/src/common/constants.py#L60)
+
+You will need to contact the admin of Cube Cobra [Gwen Dekker](https://github.com/dekkerglen) in order to get your own access keys if you would like 
+to use the AWS data. For a quicker result, I recommend setting this boolean value to false and supplying your own 
+list of cube IDs in the configuration file.
+
 
 ## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+1. If you have questions related to this pipeline you can reach out to me here on GitHub.
+2. Questions related to Cube Cobra can be directed to the Cube Cobra [Discord](https://discord.gg/FpXmMhkb)
+3. Questions related to Scryfall can be directed to the Scryfall [GitHub](https://github.com/scryfall)
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Thanks
+Many thanks to all the folks in the cube community who have made suggestions and improvements over the years to this 
+pipeline. Special thanks to [Gwen Dekker](https://github.com/dekkerglen) for access to the data and for his help in 
+providing guidance on how to use the Cube Cobra bucket. Thanks to [Keldan Campbell](https://twitter.com/CampbellKeldan) 
+for suggesting updates to the sampling process based on cube frequency and recency of updates. 
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
