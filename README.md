@@ -36,6 +36,12 @@ creating cubes of any size and category.
    ```
    
 ## Usage
+The pipeline works by doing the following. 
+
+1. Create a cube configuration file.
+2. running the `__main__.py` script with the path to your configuration file as an argument.
+
+### Cube Configuration File
 The cube creation pipeline takes in a JSON configuration file of the following form. 
 
 ```json
@@ -75,7 +81,7 @@ key in the configuration file:
 | stages | A list of stages you want to run in the pipeline. | ["scrape", "create", "analyze"] | This is a list of <br/>stages you want to run in the pipeline. Options are scrape, create, and analyze. You can skip 'scrape' for example if you just want to regenerate the cube with previously crawled data. |
 | useCubeCobraBucket | A boolean value indicating whether you want to use the Cube Cobra bucket. | true | If true, the Cube Cobra bucket will be used. If false, the Cube Cobra bucket will not be used.                                                                                                                  |
 
-### Using the Cube Cobra Bucket
+#### Using the Cube Cobra Bucket
 The Cube Cobra bucket is a bucket in the Cube Cobra S3 bucket that contains all the cube data. Ths project uses the 
 bucket data to streamline the process of gathering cubes to sample for the data generated cube. The bucket requires two 
 variables to be set in your environment. 
@@ -86,6 +92,29 @@ variables to be set in your environment.
 You will need to contact the admin of Cube Cobra [Gwen Dekker](https://github.com/dekkerglen) in order to get your own access keys if you would like 
 to use the AWS data. For a quicker result, I recommend setting this boolean value to false and supplying your own 
 list of cube IDs in the configuration file.
+
+### Running the Pipeline
+To run the pipeline, you will need to run the `__main__.py` script with the path to your configuration JSON as in 
+the [__main__.py](https://github.com/l0gr1thm1k/data-generated-cube/blob/github/__main__.py#L13) file. 
+
+1. Navigate to the project directory. Again this depends on where you cloned the repository.:
+
+    ```sh
+    cd data-generated-cube
+    ```
+
+2. Update `__main__.py` to include the path to your configuration file. 
+
+    ```python
+    if __name__ == "__main__":
+        main("path/to/your/configuration/file.json")
+    ```
+   
+3. Run the `__main__.py` script. 
+
+    ```sh
+    python __main__.py
+    ```
 
 
 ## Support

@@ -1,9 +1,14 @@
 {
   "cubeName": "example_data_generated_cube",
-  "cardBlacklist": null,
-  "cardCount": 360,
+  "cardBlacklist": ["Abandon Hope"],
+  "cardCount": 540,
   "cubeCategory": "Vintage",
   "cubeIds": [
+    "modovintage",
+    "wtwlf123",
+    "synergy",
+    "LSVCubeInit",
+    "AlphaFrog"
 ],
   "overwrite": true,
   "stages": [
@@ -11,5 +16,5 @@
     "create",
     "analyze"
   ],
-  "useCubeCobraBucket": true
+  "useCubeCobraBucket": false
 }
