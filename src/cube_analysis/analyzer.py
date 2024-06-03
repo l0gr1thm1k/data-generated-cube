@@ -33,7 +33,7 @@ class CubeAnalyzer(PipelineObject):
                         "Land": "T"}
     hyphen_regex = re.compile(r" [—-].*")
     legendary_regex = re.compile(r"Legendary ")
-    remove_types_regex = re.compile(r"(Artifact|Enchantment|Tribal|Snow|World) ")
+    remove_types_regex = re.compile(r"(Artifact|Enchantment|Tribal|Snow|World|Kindred|Basic) ")
 
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
