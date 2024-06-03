@@ -169,7 +169,14 @@ class CubeCobraScraper(PipelineObject):
 
     @staticmethod
     def get_json_query(soup_object):
-        script_tag = soup_object.find('script', type="text/javascript", string=lambda text: text and 'lotus' in text)
+        """
+        Parse a webpage soup object for a text/javascript script object that contains the cube data
+
+        :param soup_object:
+        :return:
+        """
+        script_tag = soup_object.find('script', type="text/javascript",
+                                      string=lambda text: text and '''"cube":{''' in text)
         raw = script_tag.text
         match = re.findall(r"\{.*", raw)[0].rstrip(';')
 
