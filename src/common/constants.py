@@ -52,8 +52,8 @@ TYPE_PALETTE = {
     "Enchantment": "mediumorchid",
     "Sorcery": "dimgray",
     "Land": "DarkGreen",
-    "Conspiracy": "DarkOrange"
-
+    "Conspiracy": "DarkOrange",
+    "Battle": "Pink"
 }
 
 AWS_ACCESS_KEY_ID = os.environ.get("CUBE_COBRA_AWS_ACCESS_KEY_ID")

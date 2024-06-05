@@ -10,5 +10,5 @@ def main(config_file_path):
 
 
 if __name__ == '__main__':
-    config_file = str(EXAMPLE_CONFIGS_DIRECTORY_PATH / "example_config.json")
+    config_file = str(EXAMPLE_CONFIGS_DIRECTORY_PATH / "cubecon2024_lists.json")
     main(config_file)

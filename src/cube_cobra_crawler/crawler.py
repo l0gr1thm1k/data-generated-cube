@@ -75,6 +75,12 @@ class CubeCobraScraper(PipelineObject):
 
             tasks = []
             lock = asyncio.Lock()
+
+            import os
+            filename = "/home/daniel/Code/mtg/data-generated-cube/src/cohort-analysis/cube_names_map.csv"
+            with open(filename, 'w') as fstream:
+                fstream.write("Cube ID,Cube Name")
+
             for cube_id in self.config.cubeIds:
                 task = asyncio.create_task(self.process_cube(cube_id, lock))
                 tasks.append(task)
@@ -136,6 +142,12 @@ class CubeCobraScraper(PipelineObject):
 
         try:
             cube_json_object = self.get_json_query(cube_soup_object)
+            cube_name = cube_json_object['cube']['name']
+            cube_name = '"' + cube_name + '"' if "," in cube_name else cube_name
+            async with lock:
+                with open("/home/daniel/Code/mtg/data-generated-cube/src/cohort-analysis/cube_names_map.csv", "a") as fstream:
+                    fstream.write(f"\n{cube_identifier},{cube_name}")
+
         except AttributeError:
             logger.warning(f"Failed to process cube {cube_overview_link}")
             return
@@ -143,7 +155,8 @@ class CubeCobraScraper(PipelineObject):
         last_updated = await self.feed_parser.get_most_recent_update_date(cube_identifier)
         today = datetime.datetime.today()
 
-        if (today - last_updated).days <= 365:
+        # if (today - last_updated).days <= 365:
+        if True:
             cube_weight = await self.get_cube_weight(cube_json_object, cube_identifier)
             async with lock:
                 self.cube_weights[cube_identifier] = cube_weight
