@@ -77,7 +77,7 @@ class CubeCobraScraper(PipelineObject):
             tasks = []
             lock = asyncio.Lock()
 
-            if self.config.cohortAnalysis:
+            if self.config.get("cohortAnalysis", False):
                 self.setup_cohort_analysis_directory()
 
             for cube_id in self.config.cubeIds:
@@ -152,7 +152,7 @@ class CubeCobraScraper(PipelineObject):
             cube_json_object = self.get_json_query(cube_soup_object)
             cube_name = cube_json_object['cube']['name']
             cube_name = '"' + cube_name + '"' if "," in cube_name else cube_name
-            if self.config.cohortAnalysis:
+            if self.config.get("cohortAnalysis", False):
                 file_path = COHORT_ANALYSIS_DIRECTORY_PATH / self.config.cubeName / "cube_names_map.csv"
                 async with lock:
                     with open(file_path, "a") as fstream:
