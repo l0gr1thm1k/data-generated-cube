@@ -13,7 +13,8 @@ from typing import Union
 
 from common.args import process_args
 from common.common import ensure_dir_exists
-from common.constants import DATA_DIRECTORY_PATH, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BLACKLIST_REGEX
+from common.constants import DATA_DIRECTORY_PATH, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BLACKLIST_REGEX,\
+    COHORT_ANALYSIS_DIRECTORY_PATH
 from cube_cobra_crawler.csv_file_generator import CSVFileGenerator
 from cube_cobra_crawler.rss_feed_crawler import RSSFeedParser
 from cube_config.cube_configuration import CubeConfig
@@ -76,9 +77,8 @@ class CubeCobraScraper(PipelineObject):
             tasks = []
             lock = asyncio.Lock()
 
-            filename = "/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv"
-            with open(filename, 'w') as fstream:
-                fstream.write("Cube ID,Cube Name")
+            if self.config.cohortAnalysis:
+                self.setup_cohort_analysis_directory()
 
             for cube_id in self.config.cubeIds:
                 task = asyncio.create_task(self.process_cube(cube_id, lock))
@@ -134,6 +134,15 @@ class CubeCobraScraper(PipelineObject):
             mapping = json.load(fstream)
             return {v: int(k) for k, v in mapping.items()}
 
+    def setup_cohort_analysis_directory(self) -> None:
+        dir_path = COHORT_ANALYSIS_DIRECTORY_PATH / self.config.cubeName
+        ensure_dir_exists(dir_path)
+        if self.config.overwrite:
+            self._clear_directory(dir_path)
+        cube_name_map_file_path = dir_path / "cube_names_map.csv"
+        with open(cube_name_map_file_path, 'w') as fstream:
+            fstream.write("Cube ID,Cube Name")
+
     async def process_cube(self, cube_identifier: str, lock) -> None:
         cube_overview_link = f"https://cubecobra.com/cube/overview/{cube_identifier}"
         cube_list_link = f"https://cubecobra.com/cube/list/{cube_identifier}"
@@ -143,9 +152,11 @@ class CubeCobraScraper(PipelineObject):
             cube_json_object = self.get_json_query(cube_soup_object)
             cube_name = cube_json_object['cube']['name']
             cube_name = '"' + cube_name + '"' if "," in cube_name else cube_name
-            async with lock:
-                with open("/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv", "a") as fstream:
-                    fstream.write(f"\n{cube_identifier},{cube_name}")
+            if self.config.cohortAnalysis:
+                file_path = COHORT_ANALYSIS_DIRECTORY_PATH / self.config.cubeName / "cube_names_map.csv"
+                async with lock:
+                    with open(file_path, "a") as fstream:
+                        fstream.write(f"\n{cube_identifier},{cube_name}")
 
         except AttributeError:
             logger.warning(f"Failed to process cube {cube_overview_link}")

@@ -7,9 +7,11 @@ from common.common import ensure_dir_exists
 
 CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data_generated_cube" / "data"
 PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent.parent)
-DATA_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "data")
-ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "analysis")
-RESULTS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "results")
+ARTIFACTS_DIRECTORY = ensure_dir_exists(PARENT_DIRECTORY / "artifacts")
+DATA_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "data")
+ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "analysis")
+COHORT_ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "cohort_analysis")
+RESULTS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "results")
 EXAMPLE_CONFIGS_DIRECTORY_PATH = PARENT_DIRECTORY / "src" / "cube_config" / "example_configs"
 
 COLORS_SET = {"White", "Blue", "Black", "Red", "Green", "Multicolored", "Colorless", "Land"}

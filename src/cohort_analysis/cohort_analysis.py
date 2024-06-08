@@ -2,6 +2,7 @@ import asyncio
 import heapq
 import warnings
 from collections import defaultdict
+from loguru import logger
 from pathlib import Path
 from typing import List, Tuple, Union
 from cube_config.cube_configuration import CubeConfig
@@ -10,7 +11,7 @@ import nltk
 import numpy as np
 import pandas as pd
 from common.common import ensure_dir_exists, min_max_normalize_sklearn
-from common.constants import DATA_DIRECTORY_PATH
+from common.constants import DATA_DIRECTORY_PATH, COHORT_ANALYSIS_DIRECTORY_PATH
 from common.args import process_args
 from pipeline_object.pipeline_object import PipelineObject
 
@@ -25,7 +26,7 @@ except:
 warnings.simplefilter("ignore", category=UserWarning)
 
 
-class CubeAnalyzer(PipelineObject):
+class CohortAnalyzer(PipelineObject):
     evergreen_keywords = {
         "Activate", "Attach", "Cast", "Counter", "Create", "Deathtouch", "Defender", "Destroy", "Discard",
         "Double strike", "Enchant", "Equip", "Exchange", "Exile", "Fight", "First strike", "Flash", "Flying", "Haste",
@@ -38,7 +39,7 @@ class CubeAnalyzer(PipelineObject):
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
         self._set_data_dir(self.config.cubeName)
-        self.analysis_dir = ensure_dir_exists(Path(__file__).parent / "analysis" / self.config.cubeName)
+        self._set_analysis_directory(self.config.cubeName)
         self.elo_fetcher = ELOFetcher()
 
     def _set_data_dir(self, data_dir: str) -> None:
@@ -51,18 +52,15 @@ class CubeAnalyzer(PipelineObject):
         data_dir_path = DATA_DIRECTORY_PATH / data_dir
         self.data_dir = ensure_dir_exists(data_dir_path)
 
-    @staticmethod
-    def _clear_directory(directory_path: str) -> None:
+    def _set_analysis_directory(self, analysis_dir):
         """
-        Clear the contents of a directory.
+        Set the analysis directory for the CSV file.
 
-        :param directory_path:
+        :param analysis_dir:
         :return:
         """
-        directory = Path(directory_path)
-        for file_path in directory.iterdir():
-            if file_path.is_file():
-                file_path.unlink()
+        analysis_dir_path = COHORT_ANALYSIS_DIRECTORY_PATH / analysis_dir
+        self.analysis_dir = ensure_dir_exists(analysis_dir_path)
 
     def _set_cube_data(self) -> None:
         """
@@ -130,6 +128,10 @@ class CubeAnalyzer(PipelineObject):
         return freq_frame
 
     async def analyze_cohort(self) -> None:
+        """
+        This is the main method of this class. Analyze the cohort of cubes and write the results to a set of CSV files.
+        """
+        logger.info(f"Analyzing {self.get_number_of_cubes_sampled(self.data_dir)} cubes in cohort")
         self._set_cube_data()
         await self._set_card_data()
         results = self.combine_cubes()
@@ -153,6 +155,11 @@ class CubeAnalyzer(PipelineObject):
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
+        logger.info(f"Analysis complete, results written to file in analysis directory: file://{self.analysis_dir}")
+
+    @staticmethod
+    def get_number_of_cubes_sampled(directory_path) -> int:
+        return len(list(Path(directory_path).glob('*.csv')))
 
     def combine_cubes(self) -> pd.DataFrame:
         cube_dicts = {}
@@ -201,13 +208,14 @@ class CubeAnalyzer(PipelineObject):
                 "Unique Card Count": unique_card_count, "Unique Card Percentage": unique_card_percentage,
                 "Unique Card Names": unique_card_names}
 
-    def get_card_data(self, card_name, counter: defaultdict):
+    def get_card_data(self, card_name, counter: defaultdict) -> List[str]:
         """
         Get data for a specific card.
 
-        :param card_name:
-        :param counter:
-        :return:
+        :param card_name: the name of the card
+        :param counter: a shard counter dictionary to keep track of keyword counts. This parameter's values are updated
+        for future use.
+        :return: a list of keywords for the card.
         """
         try:
             data = self.elo_fetcher.scryfall_cache.get(card_name, {})[0]
@@ -261,9 +269,8 @@ class CubeAnalyzer(PipelineObject):
 
         return len(names_exclusive_to_data), list(names_exclusive_to_data)
 
-    @staticmethod
-    def set_cube_name_hyperlinks(cube_ids):
-        cube_name_frame = pd.read_csv("/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv")
+    def set_cube_name_hyperlinks(self, cube_ids):
+        cube_name_frame = pd.read_csv(self.analysis_dir / "cube_names_map.csv")
         cube_name_map = {}
         for row in cube_name_frame.iterrows():
             cube_name_map[row[1]['Cube ID']] = row[1]['Cube Name']
@@ -279,7 +286,7 @@ class CubeAnalyzer(PipelineObject):
         for row in data.iterrows():
             id = row[1]['Cube ID']
             cards = row[1]['Unique Card Names']
-            scryfall_url = self.make_scryfall_url(id, cards)
+            scryfall_url = self.make_cube_cobra_visual_spoiler_url(id, cards)
             values.append(f'''=HYPERLINK("{scryfall_url}", "{row[1]["Unique Card Count"]}")''')
         return values
 
@@ -290,25 +297,27 @@ class CubeAnalyzer(PipelineObject):
             cube_size, _ = self.get_unique_card_count_and_card_names(cube_id)
             cards = row[1]['Unique Card Names']
             duplicate_card_count = int(row[1]['Cube Size'] - cube_size)
-            scryfall_url = self.make_scryfall_url(cube_id, cards, exclusion=True)
+            scryfall_url = self.make_cube_cobra_visual_spoiler_url(cube_id, cards, exclusion=True)
             values.append(f'''=HYPERLINK("{scryfall_url}", "{duplicate_card_count}")''')
         return values
 
-    def make_scryfall_url(self, cube_id, card_list, exclusion=False):
-        example = """https://cubecobra.com/cube/list/RGCC?f=name%3D%22Aboleth+Spawn%22+or+name%3D%22Access+Denied%22&view=spoiler"""
-        base_url = f"https://cubecobra.com/cube/list/{cube_id}?f="
+    def make_cube_cobra_visual_spoiler_url(self, cube_id, card_list, exclusion=False) -> str:
+        """
+        Make a URL to a Scryfall search for a list of cards.
+
+        :param cube_id: a string id from Cube Cobra.
+        :param card_list: a list of card names
+        :param exclusion: a boolean indicating whether the search should be for cards not in the list.
+        :return: get back a url string for a CubeCobra filtered search.
+        """
+        url_start = f"https://cubecobra.com/cube/list/{cube_id}?f="
         joiner = '%22+or+' if exclusion is False else '%22+and+'
         url_end = "%22&view=spoiler"
         card_list = joiner.join([self.format_card_name(card_name, exclusion) for card_name in card_list])
 
-        return base_url + card_list + url_end
+        return url_start + card_list + url_end
 
     @staticmethod
     def format_card_name(card_name, exclusion=False):
         beginning = "-name%3A%22" if exclusion else "name%3D%22"
         return beginning + card_name.replace(" ", "+")
-
-
-if __name__ == '__main__':
-    analyzer = CubeAnalyzer("/home/daniel/Code/mtg/data-generated-cube/src/cube_config/example_configs/cubecon2024_lists.json")
-    analyzer.analyze_cohort()

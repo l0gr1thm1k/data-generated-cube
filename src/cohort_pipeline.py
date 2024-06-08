@@ -1,12 +1,11 @@
-import asyncio
+
 from typing import Union
 
 from common.args import process_args
-from cohort_analysis.analyzer import CubeAnalyzer
+from cohort_analysis.cohort_analysis import CohortAnalyzer
 from cube_cobra_crawler.crawler import CubeCobraScraper
 from cube_config.cube_configuration import CubeConfig
 from pipeline_object.pipeline_object import PipelineObject
-from common.constants import EXAMPLE_CONFIGS_DIRECTORY_PATH
 
 
 class CohortAnalysisPipeline(PipelineObject):
@@ -18,11 +17,5 @@ class CohortAnalysisPipeline(PipelineObject):
     async def run(self):
         scaper = CubeCobraScraper(self.config)
         await scaper.get_cube_data()
-        analyzer = CubeAnalyzer(self.config)
+        analyzer = CohortAnalyzer(self.config)
         await analyzer.analyze_cohort()
-
-
-if __name__ == '__main__':
-    config_path = str(EXAMPLE_CONFIGS_DIRECTORY_PATH / "cubecon2024_lists.json")
-    pipeline = CohortAnalysisPipeline(config_path)
-    asyncio.run(pipeline.run())
