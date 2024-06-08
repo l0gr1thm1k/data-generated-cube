@@ -14,12 +14,12 @@ class CohortAnalysisPipeline(PipelineObject):
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
-        self.scaper = CubeCobraScraper(self.config)
-        self.analyzer = CubeAnalyzer(self.config)
 
     async def run(self):
-        await self.scaper.get_cube_data()
-        self.analyzer.analyze_cohort()
+        scaper = CubeCobraScraper(self.config)
+        await scaper.get_cube_data()
+        analyzer = CubeAnalyzer(self.config)
+        await analyzer.analyze_cohort()
 
 
 if __name__ == '__main__':

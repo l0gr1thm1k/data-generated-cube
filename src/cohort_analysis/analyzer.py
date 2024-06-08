@@ -38,10 +38,8 @@ class CubeAnalyzer(PipelineObject):
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
         self._set_data_dir(self.config.cubeName)
-        self.analysis_dir = ensure_dir_exists(Path(__file__).parent / self.config.cubeName)
+        self.analysis_dir = ensure_dir_exists(Path(__file__).parent / "analysis" / self.config.cubeName)
         self.elo_fetcher = ELOFetcher()
-        self._set_cube_data()
-        self._set_card_data()
 
     def _set_data_dir(self, data_dir: str) -> None:
         """
@@ -52,9 +50,6 @@ class CubeAnalyzer(PipelineObject):
         """
         data_dir_path = DATA_DIRECTORY_PATH / data_dir
         self.data_dir = ensure_dir_exists(data_dir_path)
-
-        if self.config.overwrite:
-            self._clear_directory(self.data_dir)
 
     @staticmethod
     def _clear_directory(directory_path: str) -> None:
@@ -81,13 +76,13 @@ class CubeAnalyzer(PipelineObject):
         self.aggregate_cube_data = pd.concat(cubes)
         self.aggregate_cube_data.to_csv(self.analysis_dir / "aggregate_cube_data.csv", index=False)
 
-    def _set_card_data(self) -> None:
+    async def _set_card_data(self) -> None:
         """
         Set the card data from the aggregated cube data.
         """
         if not hasattr(self, 'aggregate_cube_data'):
             self._set_cube_data()
-        cube_data_with_elo_scores = asyncio.run(self.update_elo_scores(self.aggregate_cube_data))
+        cube_data_with_elo_scores = await self.update_elo_scores(self.aggregate_cube_data)
         grouped = cube_data_with_elo_scores.groupby('name').agg({
             'Cube ID': 'nunique',
             'Type': 'first',
@@ -134,7 +129,9 @@ class CubeAnalyzer(PipelineObject):
 
         return freq_frame
 
-    def analyze_cohort(self) -> None:
+    async def analyze_cohort(self) -> None:
+        self._set_cube_data()
+        await self._set_card_data()
         results = self.combine_cubes()
 
         for column in ["Keyword Breadth", "Keyword Depth", "Keyword Balance"]:
@@ -266,7 +263,7 @@ class CubeAnalyzer(PipelineObject):
 
     @staticmethod
     def set_cube_name_hyperlinks(cube_ids):
-        cube_name_frame = pd.read_csv("/home/daniel/Code/mtg/data-generated-cube/src/cohort-analysis/cube_names_map.csv")
+        cube_name_frame = pd.read_csv("/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv")
         cube_name_map = {}
         for row in cube_name_frame.iterrows():
             cube_name_map[row[1]['Cube ID']] = row[1]['Cube Name']
