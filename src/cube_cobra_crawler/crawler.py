@@ -76,8 +76,7 @@ class CubeCobraScraper(PipelineObject):
             tasks = []
             lock = asyncio.Lock()
 
-            import os
-            filename = "/home/daniel/Code/mtg/data-generated-cube/src/cohort-analysis/cube_names_map.csv"
+            filename = "/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv"
             with open(filename, 'w') as fstream:
                 fstream.write("Cube ID,Cube Name")
 
@@ -145,7 +144,7 @@ class CubeCobraScraper(PipelineObject):
             cube_name = cube_json_object['cube']['name']
             cube_name = '"' + cube_name + '"' if "," in cube_name else cube_name
             async with lock:
-                with open("/home/daniel/Code/mtg/data-generated-cube/src/cohort-analysis/cube_names_map.csv", "a") as fstream:
+                with open("/home/daniel/Code/mtg/data-generated-cube/src/cohort_analysis/cube_names_map.csv", "a") as fstream:
                     fstream.write(f"\n{cube_identifier},{cube_name}")
 
         except AttributeError:
