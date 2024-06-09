@@ -11,7 +11,7 @@ import nltk
 import numpy as np
 import pandas as pd
 from common.common import ensure_dir_exists, min_max_normalize_sklearn
-from common.constants import DATA_DIRECTORY_PATH, COHORT_ANALYSIS_DIRECTORY_PATH
+from common.constants import DATA_DIRECTORY_PATH, COHORT_ANALYSIS_DIRECTORY_PATH, EVERGREEN_KEYWORDS, TRIOMES
 from common.args import process_args
 from pipeline_object.pipeline_object import PipelineObject
 
@@ -27,19 +27,15 @@ warnings.simplefilter("ignore", category=UserWarning)
 
 
 class CohortAnalyzer(PipelineObject):
-    evergreen_keywords = {
-        "Activate", "Attach", "Cast", "Counter", "Create", "Deathtouch", "Defender", "Destroy", "Discard",
-        "Double strike", "Enchant", "Equip", "Exchange", "Exile", "Fight", "First strike", "Flash", "Flying", "Haste",
-        "Hexproof", "Indestructible", "Lifelink", "Menace", "Mill", "Play", "Protection", "Reach", "Reveal",
-        "Sacrifice", "Scry", "Search", "Shuffle", "Tap/Untap", "Trample", "Vigilance", "Ward"}
-    triomes = {"Savai Triome", "Indatha Triome", "Ketria Triome", "Raugrin Triome", "Zagoth Triome", "Raffine's Tower",
-               "Spara's Headquarters", "Xander's Lounge", "Jetmir's Garden", "Ziatora's Proving Ground"}
+    evergreen_keywords = EVERGREEN_KEYWORDS
+    triomes = TRIOMES
 
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
         super().__init__(config)
         self._set_data_dir(self.config.cubeName)
         self._set_analysis_directory(self.config.cubeName)
+        self._set_cube_name_map()
         self.elo_fetcher = ELOFetcher()
 
     def _set_data_dir(self, data_dir: str) -> None:
@@ -62,6 +58,10 @@ class CohortAnalyzer(PipelineObject):
         analysis_dir_path = COHORT_ANALYSIS_DIRECTORY_PATH / analysis_dir
         self.analysis_dir = ensure_dir_exists(analysis_dir_path)
 
+    def _set_cube_name_map(self) -> None:
+        _ = pd.read_csv(self.analysis_dir / "cube_names_map.csv")
+        self.cube_name_map = _.set_index('Cube ID')['Cube Name'].to_dict()
+
     def _set_cube_data(self) -> None:
         """
         Set the cube data from the CSV files crawled from Cube Cobra.
@@ -70,6 +70,7 @@ class CohortAnalyzer(PipelineObject):
         for cube_file_path in self.data_dir.glob('*.csv'):
             data = pd.read_csv(cube_file_path)
             data['Cube ID'] = cube_file_path.stem
+            data['Cube Name'] = self.cube_name_map[cube_file_path.stem]
             cubes.append(data)
         self.aggregate_cube_data = pd.concat(cubes)
         self.aggregate_cube_data.to_csv(self.analysis_dir / "aggregate_cube_data.csv", index=False)
@@ -141,10 +142,6 @@ class CohortAnalyzer(PipelineObject):
 
         results["Oracle Text Normalized Mean Word Count"] = min_max_normalize_sklearn(results["Oracle Text Mean Word Count"].values)
 
-        results['Cube Complexity'] = results[['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count']].sum(axis=1)
-        results['Normalized Cube Complexity'] = min_max_normalize_sklearn(results['Cube Complexity'].values)
-        results = results.sort_values(by='Cube Complexity', ascending=False)
-
         results["Cube Name"] = self.set_cube_name_hyperlinks(results["Cube ID"].values)
         results["Unique Card Count"] = self.format_unique_cards_column(results)
 
@@ -152,10 +149,16 @@ class CohortAnalyzer(PipelineObject):
         unique_cards_per_cube = self.aggregate_cube_data.groupby('Cube ID')['name'].unique()
         results["Cube Uniqueness"] = min_max_normalize_sklearn(
             unique_cards_per_cube.apply(self.calculate_uniqueness_score))
+        results['Cube Complexity'] = results[
+            ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
+             'Unique Card Percentage']].sum(axis=1)
+        results['Cube Complexity'] = min_max_normalize_sklearn(results['Cube Complexity'].values)
 
-        column_order = ["Cube Name", "Cube Size", "Cross Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
+        results = results.sort_values(by='Cube Name')
+
+        column_order = ["Cube Name", "Cube Size", "Cross-Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
                         "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency", "Oracle Text Mean Word Count",
-                        "Median CMC", "Mean CMC", "Cube Complexity", "Cube Uniqueness"]
+                        "Median CMC", "Mean CMC", "Cube Uniqueness", "Cube Complexity"]
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
@@ -278,14 +281,10 @@ class CohortAnalyzer(PipelineObject):
         return len(names_exclusive_to_data), list(names_exclusive_to_data)
 
     def set_cube_name_hyperlinks(self, cube_ids):
-        cube_name_frame = pd.read_csv(self.analysis_dir / "cube_names_map.csv")
-        cube_name_map = {}
-        for row in cube_name_frame.iterrows():
-            cube_name_map[row[1]['Cube ID']] = row[1]['Cube Name']
         formatted_names = []
         for cube_id in cube_ids:
             formatted_names.append(
-                f'''=HYPERLINK("https://cubecobra.com/cube/overview/{cube_id}", "{cube_name_map[cube_id]}")''')
+                f'''=HYPERLINK("https://cubecobra.com/cube/overview/{cube_id}", "{self.cube_name_map[cube_id]}")''')
 
         return formatted_names
 

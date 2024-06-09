@@ -62,3 +62,11 @@ AWS_ACCESS_KEY_ID = os.environ.get("CUBE_COBRA_AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("CUBE_COBRA_AWS_SECRET_ACCESS_KEY")
 
 BLACKLIST_REGEX = r"""\b(white|black|blue|red|green|esper|grixis|naya|jund|bant|jeskai|temur|mardu|sultai|abzan|old school|oldschool|93|94|border|alpha|beta|antiquities|legends|pre.*modern|mono|frame|nostalgia|\sabu\s|data generated|pre[\b-]|connect the clues)\b"""
+
+EVERGREEN_KEYWORDS = {
+    "Activate", "Attach", "Cast", "Counter", "Create", "Deathtouch", "Defender", "Destroy", "Discard",
+    "Double strike", "Enchant", "Equip", "Exchange", "Exile", "Fight", "First strike", "Flash", "Flying", "Haste",
+    "Hexproof", "Indestructible", "Lifelink", "Menace", "Mill", "Play", "Protection", "Reach", "Reveal",
+    "Sacrifice", "Scry", "Search", "Shuffle", "Tap/Untap", "Trample", "Vigilance", "Ward"}
+TRIOMES = {"Savai Triome", "Indatha Triome", "Ketria Triome", "Raugrin Triome", "Zagoth Triome", "Raffine's Tower",
+           "Spara's Headquarters", "Xander's Lounge", "Jetmir's Garden", "Ziatora's Proving Ground"}
