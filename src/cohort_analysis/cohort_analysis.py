@@ -147,11 +147,15 @@ class CohortAnalyzer(PipelineObject):
 
         results["Cube Name"] = self.set_cube_name_hyperlinks(results["Cube ID"].values)
         results["Unique Card Count"] = self.format_unique_cards_column(results)
-        results["Duplicate Card Count"] = self.format_duplicate_cards_column(results)
 
-        column_order = ["Cube Name", "Cube Size", "Duplicate Card Count", "Unique Card Count", "Unique Card Percentage",
+        results["Cross-Cube Card Overlap"] = self.format_duplicate_cards_column(results)
+        unique_cards_per_cube = self.aggregate_cube_data.groupby('Cube ID')['name'].unique()
+        results["Cube Uniqueness"] = min_max_normalize_sklearn(
+            unique_cards_per_cube.apply(self.calculate_uniqueness_score))
+
+        column_order = ["Cube Name", "Cube Size", "Cross Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
                         "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency", "Oracle Text Mean Word Count",
-                        "Oracle Text Normalized Mean Word Count", "Normalized Cube Complexity"]
+                        "Median CMC", "Mean CMC", "Cube Complexity", "Cube Uniqueness"]
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
@@ -185,6 +189,10 @@ class CohortAnalyzer(PipelineObject):
         cube_data = {}
         cube = pd.read_csv(filepath)
         word_count = 0
+        cube['CMC'] = cube['CMC'].fillna(0)
+        cube['CMC'] = pd.to_numeric(cube['CMC'], errors='coerce')
+        mean_cmc = cube['CMC'].mean()
+        median_cmc = cube['CMC'].median()
         for index in range(cube.shape[0]):
             row = cube.iloc[index]
             cube_data[row["name"]] = self.get_card_data(row["name"], keyword_counter)
@@ -206,7 +214,7 @@ class CohortAnalyzer(PipelineObject):
                 "Keyword Frequency": dict(keyword_counter), "Defining Keyword Frequency": most_frequent_keywords,
                 "Oracle Text Mean Word Count": mean_word_count, "Cube Size": cube.shape[0],
                 "Unique Card Count": unique_card_count, "Unique Card Percentage": unique_card_percentage,
-                "Unique Card Names": unique_card_names}
+                "Unique Card Names": unique_card_names, "Mean CMC": mean_cmc, "Median CMC": median_cmc}
 
     def get_card_data(self, card_name, counter: defaultdict) -> List[str]:
         """
@@ -321,3 +329,15 @@ class CohortAnalyzer(PipelineObject):
     def format_card_name(card_name, exclusion=False):
         beginning = "-name%3A%22" if exclusion else "name%3D%22"
         return beginning + card_name.replace(" ", "+")
+
+    def calculate_uniqueness_score(self, card_names: List[str]) -> float:
+        """
+        Calculate the uniqueness score for a list of card names. This list of card names will be the cards in a cube.
+
+        :param card_names: a list of string card names
+        :return: a float value denoting the uniqueness score of the cube normalized by its size.
+        """
+        numerator = self.card_stats[self.card_stats['name'].isin(card_names)]['Card Uniqueness'].sum()
+        denominator = self.card_stats[self.card_stats['name'].isin(card_names)]['Card Uniqueness'].count()
+
+        return numerator / denominator
