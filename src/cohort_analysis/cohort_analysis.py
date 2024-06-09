@@ -194,8 +194,10 @@ class CohortAnalyzer(PipelineObject):
         word_count = 0
         cube['CMC'] = cube['CMC'].fillna(0)
         cube['CMC'] = pd.to_numeric(cube['CMC'], errors='coerce')
-        mean_cmc = cube['CMC'].mean()
-        median_cmc = cube['CMC'].median()
+        nonland_cards = cube[~cube['Type'].str.contains('land', case=False)]
+        mean_cmc = nonland_cards['CMC'].mean()
+        median_cmc = int(nonland_cards['CMC'].median())
+
         for index in range(cube.shape[0]):
             row = cube.iloc[index]
             cube_data[row["name"]] = self.get_card_data(row["name"], keyword_counter)
@@ -238,6 +240,11 @@ class CohortAnalyzer(PipelineObject):
             for keyword in keywords:
                 if keyword not in self.evergreen_keywords:
                     counter[keyword] += 1
+
+            oracle = data.get('oracle_text', '')
+            if 'you become the monarch' in oracle:
+                counter['Monarch'] += 1
+                keywords.append('Monarch')
 
         return keywords
 
