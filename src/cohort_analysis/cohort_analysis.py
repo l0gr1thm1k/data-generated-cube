@@ -83,20 +83,21 @@ class CohortAnalyzer(PipelineObject):
             self._set_cube_data()
         cube_data_with_elo_scores = await self.update_elo_scores(self.aggregate_cube_data)
         grouped = cube_data_with_elo_scores.groupby('name').agg({
-            'Cube ID': 'nunique',
+            'Cube ID': ['nunique', lambda x: list(x.unique())],
             'Type': 'first',
             'ELO': 'first',
             'CMC': 'first'
         })
         raw_frequency = cube_data_with_elo_scores['name'].value_counts()
-        grouped.rename(columns={'Cube ID': 'Cube Frequency'}, inplace=True)
+        grouped.columns = ['Cube Frequency', 'Included in Cubes', 'Type', 'ELO', 'CMC']
         total_cubes = cube_data_with_elo_scores['Cube ID'].nunique()
         grouped['Card Uniqueness'] = np.log(total_cubes / grouped['Cube Frequency'])
         grouped['Card Uniqueness'] = min_max_normalize_sklearn(grouped['Card Uniqueness'].values)
         grouped['Non-Land'] = ~grouped['Type'].str.contains('land', case=False)
         grouped['Raw Frequency'] = raw_frequency
         grouped.drop(columns='Type', inplace=True)
-        self.card_stats = grouped.sort_values(by='Cube Frequency', ascending=False).reset_index().rename(
+        self.card_stats = grouped.sort_values(by=['Cube Frequency', 'ELO'],
+                                              ascending=[False, False]).reset_index().rename(
             columns={'index': 'Card Name'})
         self.card_stats.to_csv(self.analysis_dir / "card_stats.csv", index=False)
 
@@ -242,9 +243,10 @@ class CohortAnalyzer(PipelineObject):
                     counter[keyword] += 1
 
             oracle = data.get('oracle_text', '')
-            if 'you become the monarch' in oracle:
-                counter['Monarch'] += 1
-                keywords.append('Monarch')
+            for phrase, keyword in [('you become the monarch', 'Monarch'), ('Ring tempts you', 'The Ring tempts you')]:
+                if phrase in oracle:
+                    counter[keyword] += 1
+                    keywords.append(keyword),
 
         return keywords
 
