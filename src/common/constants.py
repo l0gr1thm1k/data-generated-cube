@@ -7,9 +7,11 @@ from common.common import ensure_dir_exists
 
 CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data_generated_cube" / "data"
 PARENT_DIRECTORY = ensure_dir_exists(Path(__file__).resolve().parent.parent.parent)
-DATA_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "data")
-ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "analysis")
-RESULTS_DIRECTORY_PATH = ensure_dir_exists(PARENT_DIRECTORY / "results")
+ARTIFACTS_DIRECTORY = ensure_dir_exists(PARENT_DIRECTORY / "artifacts")
+DATA_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "data")
+ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "analysis")
+COHORT_ANALYSIS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "cohort_analysis")
+RESULTS_DIRECTORY_PATH = ensure_dir_exists(ARTIFACTS_DIRECTORY / "results")
 EXAMPLE_CONFIGS_DIRECTORY_PATH = PARENT_DIRECTORY / "src" / "cube_config" / "example_configs"
 
 COLORS_SET = {"White", "Blue", "Black", "Red", "Green", "Multicolored", "Colorless", "Land"}
@@ -52,11 +54,19 @@ TYPE_PALETTE = {
     "Enchantment": "mediumorchid",
     "Sorcery": "dimgray",
     "Land": "DarkGreen",
-    "Conspiracy": "DarkOrange"
-
+    "Conspiracy": "DarkOrange",
+    "Battle": "Pink"
 }
 
 AWS_ACCESS_KEY_ID = os.environ.get("CUBE_COBRA_AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("CUBE_COBRA_AWS_SECRET_ACCESS_KEY")
 
 BLACKLIST_REGEX = r"""\b(white|black|blue|red|green|esper|grixis|naya|jund|bant|jeskai|temur|mardu|sultai|abzan|old school|oldschool|93|94|border|alpha|beta|antiquities|legends|pre.*modern|mono|frame|nostalgia|\sabu\s|data generated|pre[\b-]|connect the clues)\b"""
+
+EVERGREEN_KEYWORDS = {
+    "Activate", "Attach", "Cast", "Counter", "Create", "Deathtouch", "Defender", "Destroy", "Discard",
+    "Double strike", "Enchant", "Equip", "Exchange", "Exile", "Fight", "First strike", "Flash", "Flying", "Haste",
+    "Hexproof", "Indestructible", "Lifelink", "Menace", "Mill", "Play", "Protection", "Reach", "Reveal",
+    "Sacrifice", "Scry", "Search", "Shuffle", "Tap/Untap", "Trample", "Vigilance", "Ward"}
+TRIOMES = {"Savai Triome", "Indatha Triome", "Ketria Triome", "Raugrin Triome", "Zagoth Triome", "Raffine's Tower",
+           "Spara's Headquarters", "Xander's Lounge", "Jetmir's Garden", "Ziatora's Proving Ground"}
