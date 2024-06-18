@@ -145,11 +145,13 @@ class CohortAnalyzer(PipelineObject):
 
         results["Cube Name"] = self.set_cube_name_hyperlinks(results["Cube ID"].values)
         results["Unique Card Count"] = self.format_unique_cards_column(results)
-
         results["Cross-Cube Card Overlap"] = self.format_duplicate_cards_column(results)
-        unique_cards_per_cube = self.aggregate_cube_data.groupby('Cube ID')['name'].unique()
-        results["Cube Uniqueness"] = min_max_normalize_sklearn(
-            unique_cards_per_cube.apply(self.calculate_uniqueness_score))
+
+        cube_uniqueness_scores = []
+        for cube_id in results['Cube ID']:
+            cube_cards = self.aggregate_cube_data[self.aggregate_cube_data['Cube ID'] == cube_id]['name'].tolist()
+            cube_uniqueness_scores.append(self.calculate_uniqueness_score(cube_cards))
+        results["Cube Uniqueness"] = min_max_normalize_sklearn(cube_uniqueness_scores)
         results['Cube Complexity'] = results[
             ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
              'Unique Card Percentage']].sum(axis=1)
