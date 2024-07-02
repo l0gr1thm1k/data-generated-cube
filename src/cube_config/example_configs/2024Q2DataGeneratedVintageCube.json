@@ -1,0 +1,20 @@
+{
+  "cubeName": "2024Q2DataGeneratedVintageCube",
+  "cardBlacklist": ["Time Vault", "Dark Depths", "Thespian's Stage"],
+  "cardCount": 360,
+  "cubeCategory": "Vintage",
+  "cubeIds": [
+    "modovintage",
+    "wtwlf123",
+    "AlphaFrog",
+    "LSVCube"
+],
+  "overwrite": true,
+  "stages": [
+    "scrape",
+    "create",
+    "analyze"
+  ],
+  "recentUpdatesThreshold": 90,
+  "useCubeCobraBucket": true
+}

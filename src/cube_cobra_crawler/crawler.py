@@ -165,7 +165,7 @@ class CubeCobraScraper(PipelineObject):
         last_updated = await self.feed_parser.get_most_recent_update_date(cube_identifier)
         today = datetime.datetime.today()
 
-        if (today - last_updated).days <= 365 or self.config.get("cohortAnalysis", False):
+        if (today - last_updated).days <= self.config.recentUpdatesThreshold or self.config.get("cohortAnalysis", False):
             cube_weight = await self.get_cube_weight(cube_json_object, cube_identifier)
             async with lock:
                 self.cube_weights[cube_identifier] = cube_weight
