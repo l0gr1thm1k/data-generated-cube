@@ -102,17 +102,14 @@ class CubeCobraScraper(PipelineObject):
 
         with open(download_path) as fstream:
             data = json.load(fstream)
-        blacklist_regex = re.compile(BLACKLIST_REGEX, re.IGNORECASE)
-        ids = []
-        oracle_id_mapping = self.create_oracle_id_mapping()
-        power_card_indices = {oracle_id_mapping[oracle_id] for oracle_id in self.power_map.values()}
+        category = self.config.get('cubeCategory', '').lower()
+        if category == 'vintage':
+            ids = self.fetch_vintage_ids(data)
+        elif category == 'pioneer':
+            ids = self.fetch_pioneer_ids(data)
+        else:
+            ids = []
 
-        for cube in data:
-            if power_card_indices.issubset(set(cube['cards'])) and \
-                    (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
-                    and len(cube["following"]) >= 1:
-                if not blacklist_regex.search(cube['name']):
-                    ids.append(cube['id'])
         return ids
 
     @staticmethod
@@ -127,12 +124,59 @@ class CubeCobraScraper(PipelineObject):
         except Exception as e:
             logger.info(f"An error occurred while downloading the file: {e}")
 
+    def fetch_vintage_ids(self, data_obj: dict) -> list:
+        """
+        Get a list of cube ids satisfying the following conditions:
+
+        * includes all cards in a list of powered cards
+        * Not matching a vintage cube list blacklist regex
+        * card count is within +-10% of class config card count
+        * Has at minimum 1 follower
+
+        :param data_obj: a json dictionary like object.
+        :return ids: a list of string ids.
+        """
+        blacklist_regex = re.compile(BLACKLIST_REGEX, re.IGNORECASE)
+        ids = []
+        oracle_id_mapping = self.create_oracle_id_mapping()
+        power_card_indices = {oracle_id_mapping[oracle_id] for oracle_id in self.power_map.values()}
+
+        for cube in data_obj:
+            if power_card_indices.issubset(set(cube['cards'])) and \
+                    (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
+                    and len(cube["following"]) >= 1:
+                if not blacklist_regex.search(cube['name']):
+                    ids.append(cube['id'])
+
+        return ids
+
     def create_oracle_id_mapping(self) -> dict:
         download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "indexToOracleMap.json")
         self.download_file(bucket_name="cubecobra", object_key="indexToOracleMap.json", download_path=download_path)
         with open(download_path) as fstream:
             mapping = json.load(fstream)
             return {v: int(k) for k, v in mapping.items()}
+
+    def fetch_pioneer_ids(self, data_obj: dict) -> list:
+        """
+         Get a list of cube ids satisfying the following conditions.
+
+         * cube name contains the phrase `pioneer`
+         * card count is within +-10% of class config card count
+         * Has at minimum 1 follower
+
+        :param data_obj: a json dictionary like object.
+        :return ids: a list of string ids.
+        """
+        pioneer_regex = re.compile("pioneer", re.IGNORECASE)
+        ids = []
+
+        for cube in data_obj:
+            if (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
+                    and len(cube["following"]) >= 1 and pioneer_regex.search(cube['name']):
+                ids.append(cube['id'])
+
+        return ids
 
     def setup_cohort_analysis_directory(self) -> None:
         dir_path = COHORT_ANALYSIS_DIRECTORY_PATH / self.config.cubeName
