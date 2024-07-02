@@ -16,5 +16,6 @@
     "create",
     "analyze"
   ],
+  "recentUpdatesThreshold": 90,
   "useCubeCobraBucket": false
 }
