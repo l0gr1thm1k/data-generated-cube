@@ -148,20 +148,26 @@ class CohortAnalyzer(PipelineObject):
         results["Cross-Cube Card Overlap"] = self.format_duplicate_cards_column(results)
 
         cube_uniqueness_scores = []
+        unique_card_object_counts = []
         for cube_id in results['Cube ID']:
             cube_cards = self.aggregate_cube_data[self.aggregate_cube_data['Cube ID'] == cube_id]['name'].tolist()
             cube_uniqueness_scores.append(self.calculate_uniqueness_score(cube_cards))
+            unique_card_object_counts.append(len(self.count_unique_tokens_and_emblems(cube_cards)))
         results["Cube Uniqueness"] = min_max_normalize_sklearn(cube_uniqueness_scores)
+        results["Unique Token Count"] = unique_card_object_counts
+        results["Normalized Unique Tokens"] = min_max_normalize_sklearn([xx/yy for xx, yy in zip(unique_card_object_counts, results['Cube Size'])])
+        # TODO: Token Generators next
         results['Cube Complexity'] = results[
             ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
-             'Unique Card Percentage']].sum(axis=1)
+             'Unique Card Percentage', 'Normalized Unique Tokens']].sum(axis=1)
         results['Cube Complexity'] = min_max_normalize_sklearn(results['Cube Complexity'].values)
 
         results = results.sort_values(by='Cube Name')
 
         column_order = ["Cube Name", "Cube Size", "Cross-Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
                         "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency", "Oracle Text Mean Word Count",
-                        "Median CMC", "Mean CMC", "Cube Uniqueness", "Cube Complexity"]
+                        "Median CMC", "Mean CMC", "Unique Token Count", "Normalized Unique Tokens", "Cube Uniqueness",
+                        "Cube Complexity"]
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
@@ -351,3 +357,54 @@ class CohortAnalyzer(PipelineObject):
         denominator = self.card_stats[self.card_stats['name'].isin(card_names)]['Card Uniqueness'].count()
 
         return numerator / denominator
+
+    def count_unique_tokens_and_emblems(self, cube_cards: list) -> set:
+        """
+        Count the unique tokens and emblems in a list of cube cards.
+
+        :param cube_cards: A list of cube cards to check for unique tokens and emblems.
+        :return: get back a tuple of sets of unique oracles and card object names.
+        """
+        unique_oracles = set()
+        for card_name in cube_cards:
+            card_data = self._get_card_data(card_name)
+            if card_data:
+                card_oracles, _ = self._process_card_parts(card_data)
+                unique_oracles.update(card_oracles)
+
+        return unique_oracles
+
+    def _get_card_data(self, card_name: str) -> Union[dict, None]:
+        """
+        Get card data from Scryfall. Get a card object based on the card name, or the extended name if it cannot be
+        found given the card name parameter. Example extended name: "Giant Killer // Chop Down"
+
+        :param card_name: The name of the card data
+        :return:
+        """
+        card_data = self.elo_fetcher.scryfall_cache.get(card_name)
+        if card_data is None or not card_data:
+            extended_name = self.elo_fetcher.get_extended_name(card_name)
+            card_data = self.elo_fetcher.scryfall_cache.get(extended_name)
+
+        return card_data[0] if card_data and len(card_data) > 0 else None
+
+    def _process_card_parts(self, card_data: dict) -> Tuple[set, set]:
+        """
+        Process all parts of the card to find unique oracles and names.
+
+        :param card_data: a dictionary of card data
+        return
+        """
+        card_oracles, card_object_names = set(), set()
+        all_parts = card_data.get('all_parts', [])
+        relevant_types = {'Token', 'Emblem', 'Dungeon'}
+        for part in all_parts:
+            if any(typ in part['type_line'] for typ in relevant_types):
+                card_object = self.elo_fetcher.scryfall_cache.get(part['name'])
+                if card_object:
+                    card_object = card_object[0]
+                    card_oracles.add(card_object['oracle_id'])
+                    card_object_names.add(card_object['name'])
+
+        return card_oracles, card_object_names
