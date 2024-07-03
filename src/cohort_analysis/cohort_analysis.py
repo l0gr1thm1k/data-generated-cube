@@ -149,25 +149,28 @@ class CohortAnalyzer(PipelineObject):
 
         cube_uniqueness_scores = []
         unique_card_object_counts = []
+        token_generators = []
         for cube_id in results['Cube ID']:
             cube_cards = self.aggregate_cube_data[self.aggregate_cube_data['Cube ID'] == cube_id]['name'].tolist()
             cube_uniqueness_scores.append(self.calculate_uniqueness_score(cube_cards))
-            unique_card_object_counts.append(len(self.count_unique_tokens_and_emblems(cube_cards)))
+            unique_oracle_ids, total_token_generators = self.count_unique_tokens_and_emblems(cube_cards)
+            unique_card_object_counts.append(len(unique_oracle_ids))
+            token_generators.append(total_token_generators)
         results["Cube Uniqueness"] = min_max_normalize_sklearn(cube_uniqueness_scores)
         results["Unique Token Count"] = unique_card_object_counts
         results["Normalized Unique Tokens"] = min_max_normalize_sklearn([xx/yy for xx, yy in zip(unique_card_object_counts, results['Cube Size'])])
-        # TODO: Token Generators next
+        results["Normalized Token Generators"] = min_max_normalize_sklearn([xx/yy for xx, yy in zip(token_generators, results['Cube Size'])])
         results['Cube Complexity'] = results[
             ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
-             'Unique Card Percentage', 'Normalized Unique Tokens']].sum(axis=1)
+             'Unique Card Percentage', 'Normalized Unique Tokens', 'Normalized Token Generators']].sum(axis=1)
         results['Cube Complexity'] = min_max_normalize_sklearn(results['Cube Complexity'].values)
 
         results = results.sort_values(by='Cube Name')
 
         column_order = ["Cube Name", "Cube Size", "Cross-Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
                         "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency", "Oracle Text Mean Word Count",
-                        "Median CMC", "Mean CMC", "Unique Token Count", "Normalized Unique Tokens", "Cube Uniqueness",
-                        "Cube Complexity"]
+                        "Median CMC", "Mean CMC", "Unique Token Count", "Normalized Unique Tokens", "Normalized Token Generators",
+                        "Cube Uniqueness", "Cube Complexity"]
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
@@ -358,7 +361,7 @@ class CohortAnalyzer(PipelineObject):
 
         return numerator / denominator
 
-    def count_unique_tokens_and_emblems(self, cube_cards: list) -> set:
+    def count_unique_tokens_and_emblems(self, cube_cards: list) -> Tuple[set, int]:
         """
         Count the unique tokens and emblems in a list of cube cards.
 
@@ -366,13 +369,15 @@ class CohortAnalyzer(PipelineObject):
         :return: get back a tuple of sets of unique oracles and card object names.
         """
         unique_oracles = set()
+        total_token_generators = 0
         for card_name in cube_cards:
             card_data = self._get_card_data(card_name)
             if card_data:
                 card_oracles, _ = self._process_card_parts(card_data)
+                total_token_generators += len(card_oracles)
                 unique_oracles.update(card_oracles)
 
-        return unique_oracles
+        return unique_oracles, total_token_generators
 
     def _get_card_data(self, card_name: str) -> Union[dict, None]:
         """
