@@ -9,11 +9,13 @@ from data_generated_cube.create_cube.cube_creator import CubeCreator
 from common.args import process_args
 from common.common import ensure_dir_exists
 from common.constants import DATA_DIRECTORY_PATH, RESULTS_DIRECTORY_PATH
+from data_generated_cube.scryfall.scryfall_cache import shared_scryfall_cache
 from cube_config.cube_configuration import CubeConfig
 from pipeline_object.pipeline_object import PipelineObject
 
 
 class CubeGenerator(PipelineObject):
+    scryfall = shared_scryfall_cache
 
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
@@ -38,10 +40,12 @@ class CubeGenerator(PipelineObject):
             generated_cube = self.load_existing_cube()
         else:
             cube_combiner_instance = CubeCombiner(self.data_dir)
+            frames = await cube_combiner_instance.combine_cubes_from_directory()
+            self.update_card_blacklist(frames)
+
             cube_creator_instance = CubeCreator(card_count=self.config.get("cardCount"),
                                                 data_directory=self.data_dir,
                                                 card_blacklist=self.config.get("cardBlacklist"))
-            frames = await cube_combiner_instance.combine_cubes_from_directory()
             generated_cube = cube_creator_instance.make_cube(frames)
 
         return generated_cube
@@ -60,3 +64,10 @@ class CubeGenerator(PipelineObject):
 
         except FileNotFoundError:
             raise FileNotFoundError("No cube found, please run create cube stage")
+
+    def update_card_blacklist(self, frames: pd.DataFrame) -> None:
+        if self.config.get("forceFoilPrinting", False):
+            unique_card_names = frames['name'].unique()
+            for card_name in unique_card_names:
+                if not self.scryfall.has_foil_printing(card_name):
+                    self.config.cardBlacklist.append(card_name)
