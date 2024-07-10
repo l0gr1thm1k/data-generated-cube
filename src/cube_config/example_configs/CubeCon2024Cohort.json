@@ -85,5 +85,6 @@
   "stages": [
     "scrape"
   ],
+  "recentUpdatesThreshold": 365,
   "useCubeCobraBucket": false
 }
