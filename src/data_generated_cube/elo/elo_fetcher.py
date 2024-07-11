@@ -1,18 +1,14 @@
-import aiohttp
 import asyncio
 import re
-import time
 from typing import Union
 from datetime import datetime
 from pathlib import Path
 
-import requests
 from loguru import logger
-from retrying import retry
 
-from common.common import from_pickle, to_pickle
+from common.common import async_fetch_data, from_pickle, to_pickle
 from common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
-from data_generated_cube.scryfall.scryfall_cache import ScryfallCache
+from data_generated_cube.scryfall.scryfall_cache import shared_scryfall_cache
 
 
 class ELOFetcher:
@@ -20,10 +16,10 @@ class ELOFetcher:
     cache_file_path = Path(data_dir) / 'elo_cache.pickle'
     elo_pattern = re.compile(r'"elo".{0,10}')
     elo_digit_pattern = re.compile(r"\d+.\d+")
+    scryfall = shared_scryfall_cache
+    scryfall_cache = scryfall.cache
 
     def __init__(self):
-        scryfall = ScryfallCache()
-        self.scryfall_cache = scryfall.cache
         self.elo_cache = self.load_cache()
         self.lock = asyncio.Lock()
 
@@ -86,77 +82,33 @@ class ELOFetcher:
         return elo_score
 
     async def get_card_by_name_with_max_id(self, name: str, extended_name=False) -> dict:
+        max_card = {}
         # Attempt to get card versions from the cache
         card_versions = self.scryfall_cache.get(name, [])
 
         # If no versions found and not using extended name, try with extended name
         if not card_versions and not extended_name:
-            extended_name = self.get_extended_name(name)
+            extended_name = self.scryfall.get_extended_name(name)
             if extended_name:
                 # Recursively call with extended name
-                return await self.get_card_by_name_with_max_id(extended_name, extended_name=True)
+                max_card = await self.get_card_by_name_with_max_id(extended_name, extended_name=True)
             else:
                 # No extended name found, log and return empty dict
                 logger.debug(f"No card with name '{name}' or variants of this found in Scryfall data.")
-                return {}
 
         # Find the card version with the maximum 'id'
         if card_versions:
             try:
-                max_card = max(card_versions, key=lambda card: card["id"])
-                return max_card
+                max_card = max(card_versions, key=lambda card_version: card_version["id"])
             except ValueError:
                 # Log error and return empty dict if max operation fails
                 logger.debug(f"Error processing versions for card '{name}'.")
-                return {}
 
-        # If card_versions was empty, return an empty dict
-        if not card_versions:
-            normalized_card_name = self.normalize_card_name(name)
-            max_card = await self.get_card_stats_from_scryfall_async(normalized_card_name)
-            if not scryfall_data:
-                return {}
-
-    def get_extended_name(self, name: str) -> str:
-        extended_name_regex = f"{name}\s*\/\/.*"
-        post_extended_name_regex = f".*?\/\/\s*{name}"
-        for card in self.scryfall_cache:
-            if re.match(extended_name_regex, card):
-                return card
-
-        for card in self.scryfall_cache:
-            if re.match(post_extended_name_regex, card):
-                return card
-
-    @staticmethod
-    def normalize_card_name(card_name: str) -> str:
-        card_name = card_name.lower()
-        card_name = re.sub(r'\s+', '%20', card_name)
-        card_name = card_name.replace('&', ' ')
-
-        return card_name
-
-    async def get_card_stats_from_scryfall_async(self, card_name: str) -> dict:
-        # time.sleep(1.0)
-        normalized_card_name = self.normalize_card_name(card_name)
-        scryfall_get_url = f"https://api.scryfall.com/cards/named?exact={normalized_card_name}"
-        try:
-            response = await self.fetch_data(scryfall_get_url)
-        except Exception as e:
-            logger.debug(f"No card named {card_name} in the Scryfall database", error=e)
-            response = {}
-
-        return response
-
-    @staticmethod
-    async def fetch_data(url: str) -> str:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                return await response.text()
+        return max_card
 
     async def get_elo_from_id_async(self, card_id: str) -> Union[float, None]:
         url = f"https://cubecobra.com/tool/card/{card_id}?tab=1"
-        html_content = await self.fetch_data(url)
+        html_content = await async_fetch_data(url)
         matches = self.elo_pattern.findall(html_content)
         if not matches:
             logger.debug(f"Could not find any Elo data on card with ID {card_id}")
@@ -169,22 +121,3 @@ class ELOFetcher:
             elo_score = await self.get_elo_from_id_async(card_id)
             if elo_score is not None:
                 return elo_score
-
-
-if __name__ == "__main__":
-    fetcher = ELOFetcher()
-    power_nine = ["Black Lotus", "Ancestral Recall", "Time Walk", "Mox Pearl", "Mox Sapphire", "Mox Jet", "Mox Ruby",
-                  "Mox Emerald", "Timetwister", "Jace, Vryn's Prodigy", "Temple of Aclazotz", "Woodfall Primus"]
-
-    async def fetch_elos(fetcher, cards):
-        tasks = [fetcher.get_card_elo(card) for card in cards]
-        return await asyncio.gather(*tasks)
-
-
-    elos = asyncio.run(fetch_elos(fetcher, power_nine))
-    for card, elo in zip(power_nine, elos):
-        scryfall_data = fetcher.get_card_by_name_with_max_id(card)
-        print(f"{card}: ELO = {elo}")
-    fetcher.save_cache()
-
-

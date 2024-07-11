@@ -1,0 +1,15 @@
+{
+  "cubeName": "Data Generated Pioneer Cube",
+  "cardBlacklist": null,
+  "cardCount": 360,
+  "cubeCategory": "Pioneer",
+  "cubeIds": [],
+  "overwrite": true,
+  "stages": [
+    "scrape",
+    "create",
+    "analyze"
+  ],
+  "recentUpdatesThreshold": 90,
+  "useCubeCobraBucket": true
+}

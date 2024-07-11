@@ -107,6 +107,8 @@ class CubeCobraScraper(PipelineObject):
             ids = self.fetch_vintage_ids(data)
         elif category == 'pioneer':
             ids = self.fetch_pioneer_ids(data)
+        elif category == 'pauper':
+            ids = self.fetch_pauper_ids(data)
         else:
             ids = []
 
@@ -174,6 +176,22 @@ class CubeCobraScraper(PipelineObject):
         for cube in data_obj:
             if (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
                     and len(cube["following"]) >= 1 and pioneer_regex.search(cube['name']):
+                ids.append(cube['id'])
+
+        return ids
+
+    def fetch_pauper_ids(self, data_obj: dict) -> list:
+        """
+
+        :param data_obj:
+        :return:
+        """
+        pauper_regex = re.compile("pauper", re.IGNORECASE)
+        ids = []
+
+        for cube in data_obj:
+            if (self.config.cardCount * .9 <= len(cube['cards']) <= self.config.cardCount * 1.1) \
+                    and len(cube["following"]) >= 1 and pauper_regex.search(cube['name']):
                 ids.append(cube['id'])
 
         return ids

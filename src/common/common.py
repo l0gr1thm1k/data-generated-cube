@@ -1,9 +1,16 @@
+import aiohttp
 import dill
 
 from datetime import datetime, timezone
 from loguru import logger
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
+
+
+async def async_fetch_data(url: str) -> str:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
 
 
 def to_pickle(data, path: str, protocol: int = 3) -> None:
