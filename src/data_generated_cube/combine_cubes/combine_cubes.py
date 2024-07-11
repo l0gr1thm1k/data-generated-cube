@@ -203,3 +203,18 @@ class CubeCombiner:
     @staticmethod
     def get_elo_coverage_diff(row):
         return np.abs(row['Normalized Inclusion Rate'] - row['Normalized ELO'])
+
+    def update_blacklist_for_foils(self, data: pd.DataFrame, blacklist: list) -> list:
+        """
+        Update the card blacklist to exclude foils from the cube.
+
+        :param data: DataFrame containing card data.
+        :param blacklist: List of cards to exclude from the cube.
+        """
+        unique_card_names = data['name'].unique()
+        for card_name in unique_card_names:
+            if not self.elo_fetcher.has_foil_printing(card_name):
+                blacklist.append(card_name)
+                logger.info(f"Card {card_name} has no foil printing, adding to blacklist")
+
+        return blacklist

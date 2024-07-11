@@ -3,6 +3,7 @@ SQLAlchemy~=1.4.41
 aiohttp~=3.8.1
 asyncio~=3.4.3
 beautifulsoup4~=4.8.2
+boto3==1.34.60
 bs4~=0.0.1
 cffi~=1.15.1
 cryptography==38.0.4
