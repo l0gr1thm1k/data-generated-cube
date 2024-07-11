@@ -143,7 +143,7 @@ class ScryfallCache:
             logger.debug(f"No card with name '{card_name}' or variants of this found in Scryfall data.")
         else:
             for card_version in card_versions:
-                if card_version['foil']:
+                if card_version['foil'] and 'paper' in card_version['games']:
                     foil_printing = True
                     break
 
