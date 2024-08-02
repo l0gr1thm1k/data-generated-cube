@@ -1,9 +1,8 @@
-import pandas as pd
-
 from collections import defaultdict
-from loguru import logger
 from pathlib import Path
 from typing import Union
+
+from loguru import logger
 
 from src.common.constants import CARD_COLOR_MAP, COLORS_SET,  RESULTS_DIRECTORY_PATH
 
@@ -35,9 +34,21 @@ class CubeCreator:
 
         combined_frame.drop(columns=['Cube Weight'], inplace=True)
 
+        printing_override = pd.read_csv(CUBE_CREATION_RESOURCES_DIRECTORY / 'manually_mapped_card_printings.csv',
+                                        keep_default_na=False, dtype='str')
+
+        merged_df = pd.merge(combined_frame, printing_override, left_on='name', right_on='Name', how='left',
+                             suffixes=('', '_override'))
+
+        merged_df['Set'] = merged_df['Set_override'].combine_first(merged_df['Set'])
+        merged_df['Collector Number'] = merged_df['Collector Number_override'].combine_first(
+            merged_df['Collector Number'])
+
+        final_df = merged_df.drop(columns=['Set_override', 'Collector Number_override'])
+
         csv_file_name = "".join([Path(self.data_dir).name, ".csv"])
         csv_file_path = RESULTS_DIRECTORY_PATH / csv_file_name
-        combined_frame.to_csv(csv_file_path, index=False)
+        final_df.to_csv(csv_file_path, index=False)
         logger.info(f"Cube created at file://{csv_file_path}")
 
         return combined_frame
@@ -104,7 +115,6 @@ class CubeCreator:
 
     def remove_blacklist_cards(self, frame: pd.DataFrame) -> pd.DataFrame:
         if not self.card_blacklist:
-
             return frame
 
         logger.info(f"Removing blacklisted cards...")

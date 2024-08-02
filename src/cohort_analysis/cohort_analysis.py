@@ -5,7 +5,6 @@ from collections import defaultdict
 from loguru import logger
 from pathlib import Path
 from typing import List, Tuple, Union
-from cube_config.cube_configuration import CubeConfig
 
 import nltk
 import numpy as np

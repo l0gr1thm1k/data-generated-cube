@@ -3,6 +3,7 @@ import re
 from typing import Union
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 from loguru import logger
 
@@ -22,9 +23,10 @@ class ELOFetcher:
     def __init__(self):
         self.elo_cache = self.load_cache()
         self.lock = asyncio.Lock()
+        self.chunk = 0
 
     def load_cache(self) -> dict:
-        return from_pickle(self.cache_file_path)
+        return from_pickle(self.cache_file_path.__str__())
 
     def save_cache(self) -> None:
         to_pickle(self.elo_cache, self.cache_file_path)
@@ -38,6 +40,7 @@ class ELOFetcher:
             cube_updated_more_than_a_week_ago = (today - cache_data['lastUpdated']).days > 1
 
         if cache_data is None or cache_data.get('elo') is None or cube_updated_more_than_a_week_ago:
+            logger.info(f'ELO score for "{card_name} needs to be refreshed')
             await self.update_card_elo(card_name)
             cache_data = self.elo_cache.get(card_name)
 
@@ -62,6 +65,13 @@ class ELOFetcher:
                 async with self.lock:
                     self.elo_cache[card_name]["lastUpdated"] = datetime.now()
                 logger.info(f'Bad Cube Cobra ID for "{card_name}"')
+
+            self.chunk += 1
+
+            if self.chunk % 100 == 0:
+                logger.info(f"Updated ELO for {self.chunk} unique cards, saving the cache")
+                self.save_cache()
+                self.chunk = 0
 
         except KeyError as e:
             logger.debug(f"Could not find card {card_name} in Cube Cobra data.", error=e)
