@@ -12,6 +12,7 @@ import pandas as pd
 from src.common.common import ensure_dir_exists, min_max_normalize_sklearn
 from src.common.constants import DATA_DIRECTORY_PATH, COHORT_ANALYSIS_DIRECTORY_PATH, EVERGREEN_KEYWORDS, TRIOMES
 from src.common.args import process_args
+from src.cube_config.cube_configuration import CubeConfig
 from src.pipeline_object.pipeline_object import PipelineObject
 
 from src.data_generated_cube.elo.elo_fetcher import ELOFetcher
