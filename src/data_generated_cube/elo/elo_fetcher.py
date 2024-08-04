@@ -40,7 +40,6 @@ class ELOFetcher:
             cube_updated_more_than_a_week_ago = (today - cache_data['lastUpdated']).days > 1
 
         if cache_data is None or cache_data.get('elo') is None or cube_updated_more_than_a_week_ago:
-            logger.info(f'ELO score for "{card_name} needs to be refreshed')
             await self.update_card_elo(card_name)
             cache_data = self.elo_cache.get(card_name)
 
