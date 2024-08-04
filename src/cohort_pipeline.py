@@ -1,11 +1,10 @@
-
 from typing import Union
 
-from common.args import process_args
-from cohort_analysis.cohort_analysis import CohortAnalyzer
-from cube_cobra_crawler.crawler import CubeCobraScraper
-from cube_config.cube_configuration import CubeConfig
-from pipeline_object.pipeline_object import PipelineObject
+from src.cohort_analysis.cohort_analysis import CohortAnalyzer
+from src.common.args import process_args
+from src.cube_cobra_crawler.crawler import CubeCobraScraper
+from src.cube_config.cube_configuration import CubeConfig
+from src.pipeline_object.pipeline_object import PipelineObject
 
 
 class CohortAnalysisPipeline(PipelineObject):

@@ -11,14 +11,14 @@ from loguru import logger
 from pathlib import Path
 from typing import Union
 
-from common.args import process_args
-from common.common import ensure_dir_exists
-from common.constants import DATA_DIRECTORY_PATH, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BLACKLIST_REGEX,\
+from src.common.args import process_args
+from src.common.common import ensure_dir_exists
+from src.common.constants import DATA_DIRECTORY_PATH, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BLACKLIST_REGEX,\
     COHORT_ANALYSIS_DIRECTORY_PATH
-from cube_cobra_crawler.csv_file_generator import CSVFileGenerator
-from cube_cobra_crawler.rss_feed_crawler import RSSFeedParser
-from cube_config.cube_configuration import CubeConfig
-from pipeline_object.pipeline_object import PipelineObject
+from src.cube_cobra_crawler.csv_file_generator import CSVFileGenerator
+from src.cube_cobra_crawler.rss_feed_crawler import RSSFeedParser
+from src.cube_config.cube_configuration import CubeConfig
+from src.pipeline_object.pipeline_object import PipelineObject
 
 
 class CubeCobraScraper(PipelineObject):

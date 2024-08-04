@@ -1,11 +1,11 @@
 from typing import Union
 
-from common.args import process_args
-from cube_analysis.analyzer import CubeAnalyzer
-from cube_cobra_crawler.crawler import CubeCobraScraper
-from cube_config.cube_configuration import CubeConfig
-from data_generated_cube.cube_generator import CubeGenerator
-from pipeline_object.pipeline_object import PipelineObject
+from src.common.args import process_args
+from src.cube_analysis.analyzer import CubeAnalyzer
+from src.cube_cobra_crawler.crawler import CubeCobraScraper
+from src.cube_config.cube_configuration import CubeConfig
+from src.data_generated_cube.cube_generator import CubeGenerator
+from src.pipeline_object.pipeline_object import PipelineObject
 
 
 class DataGeneratedCubePipeline(PipelineObject):
