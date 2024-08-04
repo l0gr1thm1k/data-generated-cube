@@ -38,7 +38,7 @@ class CubeCreator:
         printing_override = pd.read_csv(CUBE_CREATION_RESOURCES_DIRECTORY / 'manually_mapped_card_printings.csv',
                                         keep_default_na=False, dtype='str')
 
-        merged_df = pd.merge(combined_frame, printing_override, left_on='name', right_on='Name', how='left',
+        merged_df = pd.merge(combined_frame, printing_override, left_on='name', right_on='name', how='left',
                              suffixes=('', '_override'))
 
         merged_df['Set'] = merged_df['Set_override'].combine_first(merged_df['Set'])
