@@ -16,7 +16,7 @@ from tabulate import tabulate
 
 from src.common.args import process_args
 from src.common.common import ensure_dir_exists, min_max_normalize_sklearn
-from src.common.constants import ANALYSIS_DIRECTORY_PATH, RESULTS_DIRECTORY_PATH, COLOR_PALETTE, TYPE_PALETTE
+from src.common.constants import ANALYSIS_DIRECTORY_PATH, COLOR_PALETTE, RESULTS_DIRECTORY_PATH, TYPE_PALETTE
 from src.cube_config.cube_configuration import CubeConfig
 from src.pipeline_object.pipeline_object import PipelineObject
 
