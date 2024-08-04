@@ -2,6 +2,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Union
 
+import pandas as pd
 from loguru import logger
 
 from src.common.constants import CARD_COLOR_MAP, COLORS_SET,  RESULTS_DIRECTORY_PATH
