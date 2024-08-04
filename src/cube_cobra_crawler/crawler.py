@@ -1,15 +1,15 @@
-import aiohttp
 import asyncio
-import boto3
 import datetime
 import json
 import re
+from pathlib import Path
+from typing import Union
 
+import aiohttp
+import boto3
 import numpy as np
 from bs4 import BeautifulSoup
 from loguru import logger
-from pathlib import Path
-from typing import Union
 
 from src.common.args import process_args
 from src.common.common import ensure_dir_exists
