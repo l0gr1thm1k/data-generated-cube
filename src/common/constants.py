@@ -2,7 +2,7 @@ import os
 
 from pathlib import Path
 
-from common.common import ensure_dir_exists
+from src.common.common import ensure_dir_exists
 
 
 CUBE_CREATION_RESOURCES_DIRECTORY = Path(__file__).resolve().parent.parent / "data_generated_cube" / "data"

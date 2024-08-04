@@ -5,8 +5,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Union
 
-from common.constants import (RESULTS_DIRECTORY_PATH, COLORS_SET,
-                              CARD_COLOR_MAP)
+from src.common.constants import CARD_COLOR_MAP, COLORS_SET,  RESULTS_DIRECTORY_PATH
 
 
 class CubeCreator:
@@ -124,16 +123,15 @@ class CubeCreator:
         """
         color_dict = {}
         for color in list(COLORS_SET):
-            color_dict[color] = self.make_color_frame(color, frame, path)
+            color_dict[color] = self.make_color_frame(color, frame)
 
         return color_dict
 
-    def make_color_frame(self, color: str, frame, data_path) -> pd.DataFrame:
+    def make_color_frame(self, color: str, frame) -> pd.DataFrame:
         """
 
         :param color:
         :param frame:
-        :param data_path:
         :return:
         """
         freq_frame = frame[frame['Color Category'] == color]

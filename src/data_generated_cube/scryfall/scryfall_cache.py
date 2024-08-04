@@ -7,8 +7,8 @@ from pathlib import Path
 import requests
 from loguru import logger
 
-from common.common import async_fetch_data
-from common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
+from src.common.common import async_fetch_data
+from src.common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
 
 
 class ScryfallCache:
