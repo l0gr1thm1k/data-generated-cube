@@ -2,7 +2,7 @@ from functools import wraps
 from inspect import getfullargspec
 from typing import Union
 
-from cube_config.cube_configuration import CubeConfig
+from src.cube_config.cube_configuration import CubeConfig
 
 
 def process_args(init_function):

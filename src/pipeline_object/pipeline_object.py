@@ -1,7 +1,7 @@
 from typing import Union
 
-from cube_config.cube_configuration import CubeConfig
-from common.args import process_args
+from src.cube_config.cube_configuration import CubeConfig
+from src.common.args import process_args
 
 
 class PipelineObject:

@@ -8,9 +8,9 @@ import numpy as np
 from loguru import logger
 from pathlib import Path
 
-from common.common import min_max_normalize_sklearn
-from common.constants import CARD_COLOR_MAP, CUBE_CREATION_RESOURCES_DIRECTORY
-from data_generated_cube.elo.elo_fetcher import ELOFetcher
+from src.common.common import min_max_normalize_sklearn
+from src.common.constants import CARD_COLOR_MAP, CUBE_CREATION_RESOURCES_DIRECTORY
+from src.data_generated_cube.elo.elo_fetcher import ELOFetcher
 
 
 class CubeCombiner:
