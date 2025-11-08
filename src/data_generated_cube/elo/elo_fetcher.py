@@ -18,6 +18,7 @@ class ELOFetcher:
     elo_digit_pattern = re.compile(r"\d+.\d+")
     scryfall = shared_scryfall_cache
     scryfall_cache = scryfall.cache
+    chunk = 0
 
     def __init__(self):
         self.elo_cache = self.load_cache()
@@ -62,6 +63,11 @@ class ELOFetcher:
                 async with self.lock:
                     self.elo_cache[card_name]["lastUpdated"] = datetime.now()
                 logger.info(f'Bad Cube Cobra ID for "{card_name}"')
+
+            self.chunk += 1
+            if self.chunk % 100 == 0:
+                self.save_cache()
+                self.chunk = 0
 
         except KeyError as e:
             logger.debug(f"Could not find card {card_name} in Cube Cobra data.", error=e)

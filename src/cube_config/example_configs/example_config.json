@@ -1,16 +1,22 @@
 {
   "cohortAnalysis": false,
   "cubeName": "example_data_generated_cube",
-  "cardBlacklist": ["Abandon Hope"],
-  "cardCount": 540,
+  "cardBlacklist": [
+    "Abandon Hope",
+    "Gleemox",
+    "Thassa's Oracle",
+    "Thopter Foundry"
+  ],
+  "cardCount": 360,
   "cubeCategory": "Vintage",
   "cubeIds": [
     "modovintage",
     "wtwlf123",
     "synergy",
-    "LSVCubeInit",
+    "LSVCube",
+    "PowerLSV",
     "AlphaFrog"
-],
+  ],
   "forceFoilPrinting": false,
   "overwrite": true,
   "stages": [
@@ -19,5 +25,5 @@
     "analyze"
   ],
   "recentUpdatesThreshold": 90,
-  "useCubeCobraBucket": false
+  "useCubeCobraBucket": true
 }
