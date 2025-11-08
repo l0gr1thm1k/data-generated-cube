@@ -10,5 +10,5 @@ def main(config_file_path):
 
 
 if __name__ == '__main__':
-    config_file = str(EXAMPLE_CONFIGS_DIRECTORY_PATH / "CubeCon2024Cohort.json")
+    config_file = str(EXAMPLE_CONFIGS_DIRECTORY_PATH / "CubeCon2025Cohort.json")
     main(config_file)
