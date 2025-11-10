@@ -28,6 +28,8 @@ except:
     from nltk.tokenize import sent_tokenize, word_tokenize
 
 warnings.simplefilter("ignore", category=UserWarning)
+# Suppress FutureWarning about pandas' deprecated use_inf_as_na option
+warnings.filterwarnings("ignore", message=".*use_inf_as_na.*", category=FutureWarning)
 
 
 class CohortAnalyzer(PipelineObject):

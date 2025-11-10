@@ -1,6 +1,7 @@
 Name,Color Category
 "Ajani, Nacatl Pariah",White
 "Boseiju, Who Endures",Land
+Commercial District,Land
 "Eiganjo, Seat of the Empire",Land
 "Emissary's Ploy",Colorless
 "Gaea's Cradle",Land
@@ -37,6 +38,7 @@ Dimir Signet,Colorless
 Dismember,Black
 Double Stroke,Colorless
 Dryad Arbor,Land
+Elegant Parlor,Land
 Elves of Deep Shadow,Green
 "Etali, Primal Conqueror",Red
 Faerie Conclave,Land
@@ -48,6 +50,7 @@ Golgari Signet,Colorless
 Great Furnace,Land
 Gruul Signet,Colorless
 Hallowed Fountain,Land
+Hedge Maze,Land
 Hive of the Eye Tyrant,Land
 Ignoble Hierarch,Green
 Izzet Signet,Colorless
@@ -56,7 +59,9 @@ Karakas,Land
 Ketria Triome,Land
 Lair of the Hydra,Land
 Lingering Souls,White
+Lush Portico,Land
 Marsh Flats,Land
+Meticulous Archive,Land
 Misty Rainforest,Land
 Mox Emerald,Colorless
 Mox Jet,Colorless
@@ -72,6 +77,7 @@ Phyrexian Metamorph,Blue
 Plateau,Land
 Polluted Delta,Land
 Porcelain Legionnaire,White
+Raucous Theater,Land
 "Raffine's Tower",Land
 Rakdos Signet,Colorless
 Raugrin Triome,Land
@@ -81,6 +87,7 @@ Savannah,Land
 Scrubland,Land
 Seat of the Synod,Land
 Selesnya Signet,Colorless
+Shadowy Backstreet,Land
 Shelldock Isle,Land
 Simic Signet,Colorless
 Soulfire Grand Master,White
@@ -103,11 +110,14 @@ Talisman of Unity,Colorless
 "Tamiyo, Inquisitive Student",Blue
 Tear Asunder,Green
 Temple Garden,Land
+Thundering Falls,Land
 Timeless Lotus,Colorless
 Tolarian Academy,Land
 Tree of Tales,Land
 Tropical Island,Land
 Tundra,Land
+Undercity Sewers,Land
+Underground Mortuary,Land
 Underground Sea,Land
 Unexpected Potential,Colorless
 Vault of Whispers,Land
