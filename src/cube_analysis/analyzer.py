@@ -20,6 +20,8 @@ from src.pipeline_object.pipeline_object import PipelineObject
 from tabulate import tabulate
 
 warnings.simplefilter("ignore", category=UserWarning)
+# Suppress seaborn's FutureWarning about pandas' deprecated use_inf_as_na option
+warnings.filterwarnings("ignore", message=".*use_inf_as_na.*", category=FutureWarning)
 
 
 class CubeAnalyzer(PipelineObject):

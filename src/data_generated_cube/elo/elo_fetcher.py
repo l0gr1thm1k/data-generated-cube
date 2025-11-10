@@ -25,10 +25,37 @@ class ELOFetcher:
         self.lock = asyncio.Lock()
 
     def load_cache(self) -> dict:
-        return from_pickle(self.cache_file_path)
+        """
+        Load the ELO cache from disk. If the cache file doesn't exist,
+        return an empty dict (useful for fresh repo clones).
+
+        The cache format is a dict with structure:
+        {
+            "card_name": {
+                "elo": float,
+                "lastUpdated": datetime
+            }
+        }
+
+        :return: Dictionary of cached ELO data
+        """
+        if not self.cache_file_path.exists():
+            logger.info(f"ELO cache not found at {self.cache_file_path}, starting with empty cache")
+            # Return empty dict matching the expected cache type
+            return dict()
+
+        logger.info(f"Loading ELO cache from {self.cache_file_path}")
+        cache = from_pickle(str(self.cache_file_path))
+
+        # Defensive check: ensure we got the expected type
+        if not isinstance(cache, dict):
+            logger.warning(f"ELO cache has unexpected type {type(cache).__name__}, expected dict. Creating new cache.")
+            return dict()
+
+        return cache
 
     def save_cache(self) -> None:
-        to_pickle(self.elo_cache, self.cache_file_path)
+        to_pickle(self.elo_cache, str(self.cache_file_path))
 
     async def get_card_elo(self, card_name: str) -> float:
         cache_data = self.elo_cache.get(card_name)

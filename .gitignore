@@ -8,6 +8,9 @@ src/results/
 __pycache__/
 
 src/data_generated_cube/data/default-cards-*.json
+src/data_generated_cube/data/aws_bucket_data-*.json
+src/data_generated_cube/data/indexToOracleMap-*.json
+src/data_generated_cube/data/elo_cache.pickle
 data/
 
 results/
