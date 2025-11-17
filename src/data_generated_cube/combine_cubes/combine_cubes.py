@@ -167,16 +167,50 @@ class CubeCombiner:
         return len(list(Path(directory_path).glob('*.csv')))
 
     async def update_elo_scores(self, freq_frame) -> None:
+        """
+        Update ELO scores for all unique cards with batching and rate limiting.
 
-        async def update_elo_cache(fetcher, cards):
-            tasks = [fetcher.get_card_elo(card) for card in cards if card is not None]
+        Uses batched requests to avoid overwhelming the Cube Cobra server and
+        prevent ClientPayloadError exceptions.
+        """
+        async def update_elo_cache_batch(fetcher, cards, batch_size=50, delay_between_batches=2.0):
+            """
+            Update ELO cache in batches with delays to prevent rate limiting.
 
-            return await asyncio.gather(*tasks)
+            :param fetcher: ELO fetcher instance
+            :param cards: List of card names
+            :param batch_size: Number of cards to process per batch (default: 50)
+            :param delay_between_batches: Seconds to wait between batches (default: 2.0)
+            """
+            total_cards = len(cards)
+            for i in range(0, total_cards, batch_size):
+                batch = cards[i:i + batch_size]
+                batch_num = (i // batch_size) + 1
+                total_batches = (total_cards + batch_size - 1) // batch_size
+
+                logger.info(f'Processing ELO batch {batch_num}/{total_batches} ({len(batch)} cards)...')
+
+                # Process batch with gather and return_exceptions to handle failures gracefully
+                tasks = [fetcher.get_card_elo(card) for card in batch if card is not None]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Log any errors that occurred
+                errors = [r for r in results if isinstance(r, Exception)]
+                if errors:
+                    logger.warning(f'Batch {batch_num} had {len(errors)} errors (continuing...)')
+
+                # Save cache after each batch to prevent data loss
+                fetcher.save_cache()
+
+                # Delay between batches to avoid rate limiting (except for last batch)
+                if i + batch_size < total_cards:
+                    await asyncio.sleep(delay_between_batches)
 
         unique_cards = freq_frame.name.unique()
         logger.info(f'Updating ELO scores for {len(unique_cards)} unique cards...')
-        await update_elo_cache(self.elo_fetcher, unique_cards)
-        self.elo_fetcher.save_cache()
+        await update_elo_cache_batch(self.elo_fetcher, unique_cards)
+
+        # Retrieve ELO scores from cache (they're all updated now)
         elo_scores = []
         for card in freq_frame.name:
             if card is None:
