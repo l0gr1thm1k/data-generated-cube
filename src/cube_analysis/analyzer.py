@@ -81,13 +81,17 @@ class CubeAnalyzer(PipelineObject):
     @staticmethod
     def get_elo_coverage_diff(row: pd.Series) -> float:
         """
-        Gets the difference between the normalized inclusion rate and the normalized ELO - this was also calculated
-        at the time the cube csv file was created. We re-calculate this metric here as it is run over various subsets
-        of the cube data.
+        Gets the signed difference between the normalized inclusion rate and the normalized ELO.
+
+        Positive values indicate cards with higher inclusion rate than ELO suggests (underrated/undervalued).
+        Negative values indicate cards with lower inclusion rate than ELO suggests (overrated/overvalued).
+
+        This metric is recalculated here as it is run over various subsets of the cube data.
 
         :param row: a pd.Series object.
+        :return: Signed difference (Inclusion Rate - ELO)
         """
-        return np.abs(row['Normalized Inclusion Rate'] - row['Normalized ELO'])
+        return row['Normalized Inclusion Rate'] - row['Normalized ELO']
 
     @staticmethod
     def load_cube(cube_file_path: str) -> pd.DataFrame:
@@ -477,13 +481,33 @@ class CubeAnalyzer(PipelineObject):
 
     def make_elo_inclusion_rate_correlated_tables(self, dataset: pd.DataFrame) -> None:
         """
-        Make tables of cards that are outliers in terms of ELO and Inclusion Rate
+        Make tables of cards that are outliers in terms of ELO and Inclusion Rate.
+
+        Uses statistical outlier detection (mean ± 2 standard deviations) to identify:
+        1. High play rate, low ELO (underrated): Cards with >50% inclusion rate and positive diff outliers
+        2. High ELO, low play rate (overrated): Cards with <50% inclusion rate and negative diff outliers
 
         :param dataset: a dataframe of cards with ELO and Inclusion Rate data
         """
-        outlier_cards = dataset.sort_values('Inclusion Rate ELO Diff', ascending=False).head(n=15)
-        high_play_low_elo = self.make_table(outlier_cards[outlier_cards['Inclusion Rate'] > 0.6])
-        low_play_high_elo = self.make_table(outlier_cards[outlier_cards['Inclusion Rate'] < 0.4])
+        # Calculate mean and standard deviation for the diff metric
+        mean_diff = dataset['Inclusion Rate ELO Diff'].mean()
+        std_diff = dataset['Inclusion Rate ELO Diff'].std()
+
+        # Define outlier thresholds (2 standard deviations from mean)
+        upper_threshold = mean_diff + (2 * std_diff)
+        lower_threshold = mean_diff - (2 * std_diff)
+
+        # Underrated cards: Positive outliers (Inclusion Rate >> ELO) with >50% play rate
+        underrated_outliers = dataset[dataset['Inclusion Rate ELO Diff'] > upper_threshold]
+        underrated_with_high_play = underrated_outliers[underrated_outliers['Inclusion Rate'] > 0.5]
+        underrated_sorted = underrated_with_high_play.sort_values('Inclusion Rate ELO Diff', ascending=False)
+        high_play_low_elo = self.make_table(underrated_sorted)
+
+        # Overrated cards: Negative outliers (ELO >> Inclusion Rate) with <50% play rate
+        overrated_outliers = dataset[dataset['Inclusion Rate ELO Diff'] < lower_threshold]
+        overrated_with_low_play = overrated_outliers[overrated_outliers['Inclusion Rate'] < 0.5]
+        overrated_sorted = overrated_with_low_play.sort_values('Inclusion Rate ELO Diff', ascending=True)
+        low_play_high_elo = self.make_table(overrated_sorted)
 
         self.save_raw_text(Path(self.analysis_directory) / "outlier_low_elo_high_play_rate.txt", high_play_low_elo)
         self.save_raw_text(Path(self.analysis_directory) / "outlier_high_elo_low_play_rate.txt", low_play_high_elo)

@@ -202,7 +202,16 @@ class CubeCombiner:
 
     @staticmethod
     def get_elo_coverage_diff(row):
-        return np.abs(row['Normalized Inclusion Rate'] - row['Normalized ELO'])
+        """
+        Gets the signed difference between the normalized inclusion rate and the normalized ELO.
+
+        Positive values indicate cards with higher inclusion rate than ELO suggests (underrated/undervalued).
+        Negative values indicate cards with lower inclusion rate than ELO suggests (overrated/overvalued).
+
+        :param row: a pd.Series object.
+        :return: Signed difference (Inclusion Rate - ELO)
+        """
+        return row['Normalized Inclusion Rate'] - row['Normalized ELO']
 
     def update_blacklist_for_foils(self, data: pd.DataFrame, blacklist: list) -> list:
         """
