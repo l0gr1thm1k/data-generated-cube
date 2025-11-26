@@ -1,21 +1,25 @@
 import asyncio
 import heapq
+import re
 import warnings
 from collections import defaultdict
-from loguru import logger
 from pathlib import Path
 from typing import List, Tuple, Union
-from cube_config.cube_configuration import CubeConfig
 
 import nltk
 import numpy as np
 import pandas as pd
-from src.common.common import ensure_dir_exists, min_max_normalize_sklearn
-from src.common.constants import DATA_DIRECTORY_PATH, COHORT_ANALYSIS_DIRECTORY_PATH, EVERGREEN_KEYWORDS, TRIOMES
+from cube_config.cube_configuration import CubeConfig
+from loguru import logger
 from src.common.args import process_args
-from src.pipeline_object.pipeline_object import PipelineObject
-
+from src.common.common import ensure_dir_exists, min_max_normalize_sklearn
+from src.common.constants import (COHORT_ANALYSIS_DIRECTORY_PATH, DATA_DIRECTORY_PATH, EVERGREEN_KEYWORDS, TRIOMES,
+                                  ACTIVATE_FROM_HAND_ACTION_PATTERN, ACTIVATED_ABILITY_PATTERN, CYCLE_PATTERN,
+                                  INSTANT_SPEED_KEYWORDS, ORACLE_TEXT_FLASH_PATTERN, ALTERNATIVE_COST_PATTERN,
+                                  ADDITIONAL_COST_PATTERN, COST_REDUCTION_PATTERN, CUBE_COMPLEXITY_WEIGHTS)
 from src.data_generated_cube.elo.elo_fetcher import ELOFetcher
+from src.data_generated_cube.scryfall.scryfall_cache import shared_scryfall_cache
+from src.pipeline_object.pipeline_object import PipelineObject
 
 try:
     from nltk.tokenize import sent_tokenize, word_tokenize
@@ -24,11 +28,21 @@ except:
     from nltk.tokenize import sent_tokenize, word_tokenize
 
 warnings.simplefilter("ignore", category=UserWarning)
+# Suppress FutureWarning about pandas' deprecated use_inf_as_na option
+warnings.filterwarnings("ignore", message=".*use_inf_as_na.*", category=FutureWarning)
 
 
 class CohortAnalyzer(PipelineObject):
     evergreen_keywords = EVERGREEN_KEYWORDS
     triomes = TRIOMES
+    activated_ability_pattern = ACTIVATED_ABILITY_PATTERN
+    oracle_flash_pattern = ORACLE_TEXT_FLASH_PATTERN
+    cycle_pattern = CYCLE_PATTERN
+    instant_speed_keywords = INSTANT_SPEED_KEYWORDS
+    hand_action_pattern = ACTIVATE_FROM_HAND_ACTION_PATTERN
+    alternative_cost_pattern = ALTERNATIVE_COST_PATTERN
+    additional_cost_pattern = ADDITIONAL_COST_PATTERN
+    scryfall_cache = shared_scryfall_cache
 
     @process_args
     def __init__(self, config: Union[str, CubeConfig]):
@@ -95,6 +109,10 @@ class CohortAnalyzer(PipelineObject):
         grouped['Card Uniqueness'] = min_max_normalize_sklearn(grouped['Card Uniqueness'].values)
         grouped['Non-Land'] = ~grouped['Type'].str.contains('land', case=False)
         grouped['Raw Frequency'] = raw_frequency
+        grouped['Instant Speed'] = self.get_instant_speed_vector(grouped.index)
+        grouped['Activated Abilities'] = grouped.index.map(lambda x: self.count_activated_abilities(x))
+        grouped['Casting Cost Complexity'] = grouped.index.map(lambda x: self.quantify_casting_cost_complexity(x))
+
         grouped.drop(columns='Type', inplace=True)
         self.card_stats = grouped.sort_values(by=['Cube Frequency', 'ELO'],
                                               ascending=[False, False]).reset_index().rename(
@@ -129,6 +147,176 @@ class CohortAnalyzer(PipelineObject):
 
         return freq_frame
 
+    def get_instant_speed_vector(self, card_list: pd.Series) -> List[int]:
+        """
+        Get the spell timing restrictions as a boolean integer value. Returns a vector of integer values that
+        corresponds to the list of card names supplied.
+
+        :param card_list: a list of card names.
+        :return: a vector of integer values consisting of 0 or 1.
+        """
+        instant_speed_vector = []
+
+        for card_name in card_list:
+            data = self.fetch_scryfall_data(card_name)
+            type_line = data.get('type_line', '')
+            keywords = set(data.get('keywords', []))
+            oracle = data.get('oracle_text', '')
+
+            if (
+                    'Instant' in type_line
+                    or self.instant_speed_keywords.intersection(keywords)
+                    or self.oracle_flash_pattern.search(oracle)
+                    or ('Cycling' in keywords and self.cycle_pattern.search(oracle))
+                    or self.hand_action_pattern.search(oracle)
+            ):
+                instant_speed_vector.append(1)
+            else:
+                instant_speed_vector.append(0)
+
+        return instant_speed_vector
+
+    def fetch_scryfall_data(self, card_name: str) -> dict:
+        """
+        fetch card data from scryfall.
+
+        :param card_name: a card name string.
+        :return: a dictionary with card data.
+        """
+        try:
+            data = self.elo_fetcher.scryfall_cache.get(card_name, {})[0]
+        except KeyError:
+            # backoff for adventure and DF Cards
+            extended_name = self.scryfall_cache.get_extended_name(card_name)
+            data = self.elo_fetcher.scryfall_cache.get(extended_name, {})[0]
+
+        return data
+
+    def count_activated_abilities(self, card_name: str) -> int:
+        card_data = self.fetch_scryfall_data(card_name)
+        lines = card_data.get('oracle_text', '').split('\n')
+        ability_count = 0
+
+        for line in lines:
+            if self.activated_ability_pattern.match(line.strip()):
+                ability_count += 1
+
+        return ability_count
+
+    @staticmethod
+    def strip_reminder_text(text: str) -> str:
+        """Remove reminder text (text in parentheses)."""
+        return re.sub(r'\([^()]*\)', '', text)
+
+    def has_alternative_cost(self, card_text: str) -> bool:
+        """Check if the card has an alternative cost. Returns True if the card has an alternative cost."""
+        cleaned_text = self.strip_reminder_text(card_text)
+        return re.search(self.alternative_cost_pattern, cleaned_text, re.IGNORECASE) is not None
+
+    def count_alternative_costs(self, card_text):
+        """Count the number of alternative costs in the card text."""
+        cleaned_text = self.strip_reminder_text(card_text)
+        return len(self.alternative_cost_pattern.findall(cleaned_text))
+
+    def quantify_casting_cost_complexity(self, card_name: str) -> float:
+        """
+        Quantify the complexity of a card's casting cost, including additional and alternate costs from oracle text.
+        This method handles complex split cards with multiple faces and adjusts the impact of high CMC values.
+
+        :param card_name: The name of the card to analyze.
+        :return: A float representing the total casting cost complexity.
+        """
+        card_data = self.fetch_scryfall_data(card_name)
+        total_complexity = 0
+
+        # Check if the card has multiple faces
+        if 'card_faces' in card_data:
+            face_count = len(card_data['card_faces'])
+            for face in card_data['card_faces']:
+                face_complexity = self._calculate_face_complexity(face)
+                total_complexity += face_complexity
+
+            # Add additional complexity for having multiple faces
+            total_complexity += np.log1p(face_count) * 2
+        else:
+            total_complexity = self._calculate_face_complexity(card_data)
+
+        return total_complexity
+
+    def _calculate_face_complexity(self, face_data: dict) -> float:
+        mana_cost = face_data.get('mana_cost', '')
+        oracle_text = face_data.get('oracle_text', '')
+
+        # Base complexity from the mana value, using log1p to reduce impact of high values
+        face_complexity = np.log1p(self._calculate_mana_value(mana_cost))
+
+        # Add complexity based on the variety of mana symbols in the cost
+        unique_symbols = set(re.findall(r'{[^}]+}', mana_cost))
+        symbol_complexity = len(unique_symbols) * 0.75
+        face_complexity += symbol_complexity
+        cleaned_oracle_text = self.strip_reminder_text(oracle_text)
+
+        # Check for alternative costs
+        alt_costs_strings = []
+        additional_costs = []
+        for line in cleaned_oracle_text.split('\n'):
+            line = line.strip()
+            alt_cost_match = self.alternative_cost_pattern.match(line)
+            add_cost_match = self.additional_cost_pattern.match(line)
+            if alt_cost_match:
+                alt_costs_strings.append(alt_cost_match.group(1))
+            if add_cost_match:
+                additional_costs.append(add_cost_match.group(1))
+        if alt_costs_strings:
+            try:
+                alt_cost_complexity = np.log1p(len(' '.join(alt_costs_strings)))
+            except:
+                raise TypeError
+            face_complexity += alt_cost_complexity
+
+        if additional_costs:
+            add_cost_complexity = np.log1p(len(' '.join(additional_costs)))
+            face_complexity += add_cost_complexity
+
+        cost_reductions = re.findall(COST_REDUCTION_PATTERN, cleaned_oracle_text)
+        for reduction in cost_reductions:
+            face_complexity += np.log1p(len(reduction)) * 1.5
+
+        return face_complexity
+
+    @staticmethod
+    def _calculate_mana_value(mana_cost: str) -> float:
+        """
+        Calculate the mana value from a mana cost string.
+
+        :param mana_cost: A string representing the mana cost (e.g., "{X}{W}")
+        :return: A float representing the mana value
+        """
+        if not mana_cost:
+            return 0.0
+
+        # Remove {} and split the string
+        symbols = mana_cost.replace("{", "").replace("}", "").split("/")
+
+        if isinstance(symbols, str):
+            symbols = [char for char in symbols]
+        else:
+            _ = []
+            for symbol_string in symbols:
+                _.extend([char for char in symbol_string])
+            symbols = _
+
+        total_value = 0
+        for symbol in symbols:
+            if symbol.isdigit():
+                total_value += int(symbol)
+            elif symbol in "WUBRG":
+                total_value += 1
+            elif symbol == "X":
+                total_value += 1  # Count X as 1 for complexity purposes
+
+        return float(total_value)
+
     async def analyze_cohort(self) -> None:
         """
         This is the main method of this class. Analyze the cohort of cubes and write the results to a set of CSV files.
@@ -150,27 +338,50 @@ class CohortAnalyzer(PipelineObject):
         cube_uniqueness_scores = []
         unique_card_object_counts = []
         token_generators = []
+        instant_speed_ratios = []
+        activated_ability_ratios = []
         for cube_id in results['Cube ID']:
             cube_cards = self.aggregate_cube_data[self.aggregate_cube_data['Cube ID'] == cube_id]['name'].tolist()
             cube_uniqueness_scores.append(self.calculate_uniqueness_score(cube_cards))
             unique_oracle_ids, total_token_generators = self.count_unique_tokens_and_emblems(cube_cards)
             unique_card_object_counts.append(len(unique_oracle_ids))
             token_generators.append(total_token_generators)
+            instant_speed_ratios.append(
+                sum(self.card_stats["Instant Speed"][self.card_stats["name"].isin(cube_cards)]) / len(cube_cards))
+            activated_ability_ratios.append(sum(self.card_stats["Activated Abilities"][self.card_stats["name"].isin(cube_cards)]) / len(cube_cards))
+
         results["Cube Uniqueness"] = min_max_normalize_sklearn(cube_uniqueness_scores)
         results["Unique Token Count"] = unique_card_object_counts
         results["Normalized Unique Tokens"] = min_max_normalize_sklearn([xx/yy for xx, yy in zip(unique_card_object_counts, results['Cube Size'])])
         results["Normalized Token Generators"] = min_max_normalize_sklearn([xx/yy for xx, yy in zip(token_generators, results['Cube Size'])])
-        results['Cube Complexity'] = results[
-            ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
-             'Unique Card Percentage', 'Normalized Unique Tokens', 'Normalized Token Generators']].sum(axis=1)
+        results["Instant Speed Ratio"] = instant_speed_ratios
+        results["Normalized Instant Speed Ratio"] = min_max_normalize_sklearn(instant_speed_ratios)
+        results["Activated Ability Ratio"] = activated_ability_ratios
+        results["Normalized Activated Ability Ratio"] = min_max_normalize_sklearn(activated_ability_ratios)
+        results["Median Casting Cost Complexity"] = results["Cube ID"].map(lambda x: self.card_stats["Casting Cost Complexity"][self.card_stats["name"].isin(self.aggregate_cube_data[self.aggregate_cube_data['Cube ID'] == x]['name'])].median())
+        results["Normalized Median Casting Cost Complexity"] = min_max_normalize_sklearn(results["Median Casting Cost Complexity"].values)
+
+        complexity_columns = ['Keyword Breadth', 'Keyword Depth', 'Oracle Text Normalized Mean Word Count', 'Cube Uniqueness',
+             'Normalized Unique Tokens', 'Normalized Token Generators',
+             "Normalized Instant Speed Ratio", "Normalized Activated Ability Ratio",
+             "Normalized Median Casting Cost Complexity"]
+        #results['Cube Complexity'] = results[[column * CUBE_COMPLEXITY_WEIGHTS[column] for column in
+        #                                      complexity_columns]].sum(axis=1)
+        results['Cube Complexity'] = results.apply(
+            lambda row: sum(row[column] * CUBE_COMPLEXITY_WEIGHTS[column] for column in complexity_columns),
+            axis=1
+        )
         results['Cube Complexity'] = min_max_normalize_sklearn(results['Cube Complexity'].values)
 
         results = results.sort_values(by='Cube Name')
 
-        column_order = ["Cube Name", "Cube Size", "Cross-Cube Card Overlap", "Unique Card Count", "Unique Card Percentage",
-                        "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency", "Oracle Text Mean Word Count",
-                        "Median CMC", "Mean CMC", "Unique Token Count", "Normalized Unique Tokens", "Normalized Token Generators",
-                        "Cube Uniqueness", "Cube Complexity"]
+        column_order = ["Cube Name", "Cube Size", "Cross-Cube Card Overlap", "Unique Card Count",
+                        "Unique Card Percentage", "Keyword Breadth", "Keyword Depth", "Defining Keyword Frequency",
+                        "Oracle Text Mean Word Count", "Median CMC", "Mean CMC", "Unique Token Count",
+                        "Normalized Unique Tokens", "Normalized Token Generators", "Instant Speed Ratio",
+                        "Normalized Instant Speed Ratio", "Activated Ability Ratio",
+                        "Normalized Activated Ability Ratio", "Median Casting Cost Complexity",
+                        "Normalized Median Casting Cost Complexity", "Cube Uniqueness", "Cube Complexity"]
         results = results[column_order]
 
         results.to_csv(self.analysis_dir / "cube_stats.csv", index=False)
@@ -242,11 +453,7 @@ class CohortAnalyzer(PipelineObject):
         for future use.
         :return: a list of keywords for the card.
         """
-        try:
-            data = self.elo_fetcher.scryfall_cache.get(card_name, {})[0]
-        except KeyError:
-            # backoff for adventure and DF Cards
-            data = self.elo_fetcher.scryfall_cache.get(card_name, {})
+        data = self.fetch_scryfall_data(card_name)
         keywords = data.get('keywords', [])
         if card_name not in self.triomes:
             for keyword in keywords:
@@ -389,7 +596,7 @@ class CohortAnalyzer(PipelineObject):
         """
         card_data = self.elo_fetcher.scryfall_cache.get(card_name)
         if card_data is None or not card_data:
-            extended_name = self.elo_fetcher.get_extended_name(card_name)
+            extended_name = self.scryfall_cache.get_extended_name(card_name)
             card_data = self.elo_fetcher.scryfall_cache.get(extended_name)
 
         return card_data[0] if card_data and len(card_data) > 0 else None

@@ -18,16 +18,44 @@ class ELOFetcher:
     elo_digit_pattern = re.compile(r"\d+.\d+")
     scryfall = shared_scryfall_cache
     scryfall_cache = scryfall.cache
+    chunk = 0
 
     def __init__(self):
         self.elo_cache = self.load_cache()
         self.lock = asyncio.Lock()
 
     def load_cache(self) -> dict:
-        return from_pickle(self.cache_file_path)
+        """
+        Load the ELO cache from disk. If the cache file doesn't exist,
+        return an empty dict (useful for fresh repo clones).
+
+        The cache format is a dict with structure:
+        {
+            "card_name": {
+                "elo": float,
+                "lastUpdated": datetime
+            }
+        }
+
+        :return: Dictionary of cached ELO data
+        """
+        if not self.cache_file_path.exists():
+            logger.info(f"ELO cache not found at {self.cache_file_path}, starting with empty cache")
+            # Return empty dict matching the expected cache type
+            return dict()
+
+        logger.info(f"Loading ELO cache from {self.cache_file_path}")
+        cache = from_pickle(str(self.cache_file_path))
+
+        # Defensive check: ensure we got the expected type
+        if not isinstance(cache, dict):
+            logger.warning(f"ELO cache has unexpected type {type(cache).__name__}, expected dict. Creating new cache.")
+            return dict()
+
+        return cache
 
     def save_cache(self) -> None:
-        to_pickle(self.elo_cache, self.cache_file_path)
+        to_pickle(self.elo_cache, str(self.cache_file_path))
 
     async def get_card_elo(self, card_name: str) -> float:
         cache_data = self.elo_cache.get(card_name)
@@ -62,6 +90,11 @@ class ELOFetcher:
                 async with self.lock:
                     self.elo_cache[card_name]["lastUpdated"] = datetime.now()
                 logger.info(f'Bad Cube Cobra ID for "{card_name}"')
+
+            self.chunk += 1
+            if self.chunk % 100 == 0:
+                self.save_cache()
+                self.chunk = 0
 
         except KeyError as e:
             logger.debug(f"Could not find card {card_name} in Cube Cobra data.", error=e)

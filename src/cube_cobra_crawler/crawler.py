@@ -96,9 +96,87 @@ class CubeCobraScraper(PipelineObject):
         bucket_ids = self.fetch_cube_ids()
         self.config.cubeIds = list(set(self.config.cubeIds + bucket_ids))
 
+    @staticmethod
+    def extract_date_from_aws_cache_filename(filename: str) -> datetime.datetime:
+        """
+        Extract date from AWS cache filename pattern: aws_bucket_data-YYYYMMDD.json
+
+        :param filename: Filename to extract date from
+        :return: datetime object or None if no date found
+        """
+        match = re.search(r'(\d{8})', filename)
+        if match:
+            date_str = match.group(1)
+            return datetime.datetime.strptime(date_str, "%Y%m%d")
+        return None
+
+    @classmethod
+    def get_most_recent_aws_cache(cls, data_dir: Path, prefix: str) -> tuple:
+        """
+        Get the most recent AWS cache file for a given prefix.
+
+        :param data_dir: Directory containing cache files
+        :param prefix: Prefix of cache files (e.g., 'aws_bucket_data', 'indexToOracleMap')
+        :return: Tuple of (filename, datetime) or (None, None) if no cache found
+        """
+        caches = list(data_dir.glob(f"{prefix}-*.json"))
+        if not caches:
+            return None, None
+
+        max_date = datetime.datetime(1970, 1, 1)
+        max_cache = None
+        for cache in caches:
+            date = cls.extract_date_from_aws_cache_filename(cache.name)
+            if date and date > max_date:
+                max_date = date
+                max_cache = cache
+
+        return max_cache, max_date
+
+    @staticmethod
+    def remove_old_aws_caches(data_dir: Path, prefix: str, keep_filename: str) -> None:
+        """
+        Remove old AWS cache files, keeping only the most recent one.
+
+        :param data_dir: Directory containing cache files
+        :param prefix: Prefix of cache files
+        :param keep_filename: Filename to keep (all others will be deleted)
+        """
+        caches = list(data_dir.glob(f"{prefix}-*.json"))
+        for cache in caches:
+            if cache.name != keep_filename:
+                cache.unlink()
+                logger.info(f"Removed old cache file: {cache.name}")
+
     def fetch_cube_ids(self):
-        download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "aws_bucket_data.json")
-        self.download_file(bucket_name="cubecobra", object_key="cubes.json", download_path=download_path)
+        data_dir = Path(__file__).parent.parent / "data_generated_cube" / "data"
+        prefix = "aws_bucket_data"
+
+        # Check for existing cache
+        most_recent_cache, cache_date = self.get_most_recent_aws_cache(data_dir, prefix)
+
+        should_download = True
+        if most_recent_cache and cache_date:
+            hours_since_cache = (datetime.datetime.now() - cache_date).total_seconds() / 3600
+            if hours_since_cache < 24:
+                should_download = False
+                download_path = most_recent_cache
+                logger.info(f"Using cached AWS bucket data from {cache_date.strftime('%Y-%m-%d')} ({hours_since_cache:.1f} hours old)")
+            else:
+                logger.info(f"AWS bucket data is {hours_since_cache:.1f} hours old, re-downloading")
+
+        if should_download:
+            logger.info("Downloading fresh AWS bucket data from S3")
+            download_path_template = str(data_dir / f"{prefix}-{{datestamp}}.json")
+            download_path = self.download_file(
+                bucket_name="cubecobra",
+                object_key="cubes.json",
+                download_path=download_path_template
+            )
+            download_path = Path(download_path)
+
+            # Clean up old caches
+            self.remove_old_aws_caches(data_dir, prefix, download_path.name)
 
         with open(download_path) as fstream:
             data = json.load(fstream)
@@ -116,15 +194,33 @@ class CubeCobraScraper(PipelineObject):
 
     @staticmethod
     def download_file(bucket_name, object_key, download_path):
+        """
+        Download a file from S3 bucket. If download_path contains a datestamp placeholder,
+        it will be replaced with the current date in YYYYMMDD format.
+
+        :param bucket_name: S3 bucket name
+        :param object_key: S3 object key
+        :param download_path: Local path to save file (can include {datestamp} placeholder)
+        :return: Actual download path used
+        """
         s3_client = boto3.client(
             's3',
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY
         )
+
+        # Replace datestamp placeholder with current date
+        if '{datestamp}' in download_path:
+            datestamp = datetime.datetime.now().strftime('%Y%m%d')
+            download_path = download_path.replace('{datestamp}', datestamp)
+
         try:
             s3_client.download_file(bucket_name, object_key, download_path)
+            logger.info(f"Successfully downloaded {object_key} to {download_path}")
+            return download_path
         except Exception as e:
-            logger.info(f"An error occurred while downloading the file: {e}")
+            logger.error(f"An error occurred while downloading the file: {e}")
+            raise
 
     def fetch_vintage_ids(self, data_obj: dict) -> list:
         """
@@ -153,8 +249,35 @@ class CubeCobraScraper(PipelineObject):
         return ids
 
     def create_oracle_id_mapping(self) -> dict:
-        download_path = str(Path(__file__).parent.parent / "data_generated_cube" / "data" / "indexToOracleMap.json")
-        self.download_file(bucket_name="cubecobra", object_key="indexToOracleMap.json", download_path=download_path)
+        data_dir = Path(__file__).parent.parent / "data_generated_cube" / "data"
+        prefix = "indexToOracleMap"
+
+        # Check for existing cache
+        most_recent_cache, cache_date = self.get_most_recent_aws_cache(data_dir, prefix)
+
+        should_download = True
+        if most_recent_cache and cache_date:
+            hours_since_cache = (datetime.datetime.now() - cache_date).total_seconds() / 3600
+            if hours_since_cache < 24:
+                should_download = False
+                download_path = most_recent_cache
+                logger.info(f"Using cached oracle ID mapping from {cache_date.strftime('%Y-%m-%d')} ({hours_since_cache:.1f} hours old)")
+            else:
+                logger.info(f"Oracle ID mapping is {hours_since_cache:.1f} hours old, re-downloading")
+
+        if should_download:
+            logger.info("Downloading fresh oracle ID mapping from S3")
+            download_path_template = str(data_dir / f"{prefix}-{{datestamp}}.json")
+            download_path = self.download_file(
+                bucket_name="cubecobra",
+                object_key="indexToOracleMap.json",
+                download_path=download_path_template
+            )
+            download_path = Path(download_path)
+
+            # Clean up old caches
+            self.remove_old_aws_caches(data_dir, prefix, download_path.name)
+
         with open(download_path) as fstream:
             mapping = json.load(fstream)
             return {v: int(k) for k, v in mapping.items()}

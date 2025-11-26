@@ -1,16 +1,39 @@
 import aiohttp
 import dill
+import heapq
+import re
 
 from datetime import datetime, timezone
 from loguru import logger
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
+from typing import Any, Dict
 
 
-async def async_fetch_data(url: str) -> str:
-    async with aiohttp.ClientSession() as session:
+async def async_fetch_data(url: str, timeout: int = 30) -> str:
+    """
+    Fetch data from a URL asynchronously with timeout.
+
+    :param url: URL to fetch
+    :param timeout: Timeout in seconds (default: 30)
+    :return: Response text
+    """
+    timeout_obj = aiohttp.ClientTimeout(total=timeout)
+    async with aiohttp.ClientSession(timeout=timeout_obj) as session:
         async with session.get(url) as response:
             return await response.text()
+
+
+def get_k_most_frequent(d: Dict[Any, int], k: int) -> Dict[Any, int]:
+    """
+    Get the k most frequent items from a dictionary.
+
+    :param d: Input dictionary
+    :param k: Number of top frequent items to return
+    :return: Dictionary containing the k most frequent items
+    """
+    k_keys = heapq.nlargest(k, d, key=d.get)
+    return {key: d[key] for key in k_keys}
 
 
 def to_pickle(data, path: str, protocol: int = 3) -> None:
@@ -79,3 +102,13 @@ def min_max_normalize_sklearn(values):
     normalized_values = normalized_values.flatten()
 
     return normalized_values
+
+
+def strip_reminder_text(text: str) -> str:
+    """
+    Remove reminder text (text in parentheses) from a string.
+
+    :param text: Input string
+    :return: String with reminder text removed
+    """
+    return re.sub(r'\([^()]*\)', '', text)
