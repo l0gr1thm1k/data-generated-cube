@@ -10,17 +10,18 @@ from sklearn.preprocessing import MinMaxScaler
 from typing import Any, Dict
 
 
-async def async_fetch_data(url: str, timeout: int = 30) -> str:
+async def async_fetch_data(url: str, timeout: int = 30, headers: Dict[str, str] = None) -> str:
     """
     Fetch data from a URL asynchronously with timeout.
 
     :param url: URL to fetch
     :param timeout: Timeout in seconds (default: 30)
+    :param headers: Optional HTTP headers
     :return: Response text
     """
     timeout_obj = aiohttp.ClientTimeout(total=timeout)
     async with aiohttp.ClientSession(timeout=timeout_obj) as session:
-        async with session.get(url) as response:
+        async with session.get(url, headers=headers) as response:
             return await response.text()
 
 

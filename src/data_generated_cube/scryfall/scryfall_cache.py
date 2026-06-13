@@ -11,11 +11,26 @@ from src.common.common import async_fetch_data
 from src.common.constants import CUBE_CREATION_RESOURCES_DIRECTORY
 
 
+SCRYFALL_HEADERS = {
+    "User-Agent": "data-generated-cube/1.0",
+    "Accept": "application/json",
+}
+
+
 class ScryfallCache:
     data_dir = CUBE_CREATION_RESOURCES_DIRECTORY
 
     def __init__(self):
         self.cache = self.get_scryfall_cache()
+        self.id_cache = {
+            printing['id']: printing
+            for printings in self.cache.values()
+            for printing in printings
+            if 'id' in printing
+        }
+
+    def get_by_id(self, scryfall_id: str) -> dict:
+        return self.id_cache.get(scryfall_id, {})
 
     @classmethod
     def get_scryfall_cache(cls):
@@ -44,7 +59,7 @@ class ScryfallCache:
     @staticmethod
     def get_scryfall_bulk_data_items():
         request_url = "https://api.scryfall.com/bulk-data"
-        response = requests.get(request_url).json()
+        response = requests.get(request_url, headers=SCRYFALL_HEADERS).json()
 
         return response
 
@@ -79,7 +94,7 @@ class ScryfallCache:
 
     @classmethod
     def download_bulk_data_from_url(cls, url: str) -> None:
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, headers=SCRYFALL_HEADERS)
         response.raise_for_status()
 
         file_name = Path(url).name
@@ -165,7 +180,7 @@ class ScryfallCache:
         normalized_card_name = self.normalize_card_name(card_name)
         scryfall_get_url = f"https://api.scryfall.com/cards/named?exact={normalized_card_name}"
         try:
-            response = await async_fetch_data(scryfall_get_url)
+            response = await async_fetch_data(scryfall_get_url, headers=SCRYFALL_HEADERS)
         except Exception as e:
             logger.debug(f"No card named {card_name} in the Scryfall database", error=e)
             response = {}

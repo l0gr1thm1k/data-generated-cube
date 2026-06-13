@@ -4,6 +4,8 @@ import pandas as pd
 
 from pathlib import Path
 
+from src.data_generated_cube.scryfall.scryfall_cache import shared_scryfall_cache
+
 
 class CSVFileGenerator:
 
@@ -20,7 +22,7 @@ class CSVFileGenerator:
         :return:
         """
         rows = []
-        for card_dict in list_of_card_dicts:
+        for card_dict in self._expand_vouchers(list_of_card_dicts):
             rows.append(self.generate_row_from_dict(card_dict))
         df = pd.DataFrame.from_records(rows, columns=self.columns)
         file_name = re.sub(r"(\s+|/)", '_', cube_name)
@@ -28,6 +30,25 @@ class CSVFileGenerator:
         initial_file_path = Path(self.data_dir) / f"{file_name}.csv"
         cube_file_path = self.make_filepath_with_backoff(initial_file_path)
         df.to_csv(cube_file_path, index=False)
+
+    @staticmethod
+    def _expand_vouchers(card_dicts):
+        # Cube Cobra "voucher" entries are bundle cards (e.g. "Urzatron") whose real
+        # printings live in a voucher_cards array. They have cardID='voucher' and no
+        # name field, so they must be expanded into their constituent cards before
+        # downstream processing.
+        for card_dict in card_dicts:
+            if not isinstance(card_dict, dict):
+                yield card_dict
+                continue
+            voucher_cards = card_dict.get('voucher_cards')
+            if card_dict.get('cardID') == 'voucher' or voucher_cards:
+                for inner in voucher_cards or []:
+                    if isinstance(inner, dict):
+                        inner.setdefault('board', card_dict.get('board', 'mainboard'))
+                        yield inner
+                continue
+            yield card_dict
 
     def generate_row_from_dict(self, card_dict: dict) -> list:
         """
@@ -65,75 +86,125 @@ class CSVFileGenerator:
                 maybeboard]
 
     @staticmethod
-    def get_card_name(card_dict):
-        try:
-            return card_dict['details']['name']
-        except KeyError:
-            raise KeyError(f"Card dictionary does not have a name key.")
+    def _get_field(card_dict, key):
+        value = card_dict.get(key)
+        if value is not None:
+            return value
+        details = card_dict.get('details') or {}
+        if details.get(key) is not None:
+            return details[key]
+        scryfall = shared_scryfall_cache.get_by_id(card_dict.get('cardID', ''))
+        if scryfall.get(key) is not None:
+            return scryfall[key]
+        faces = scryfall.get('card_faces') or []
+        if faces and faces[0].get(key) is not None:
+            return faces[0][key]
+        raise KeyError(key)
 
-    @staticmethod
-    def get_cmc(card_dict):
+    _COLOR_LETTER_TO_CATEGORY = {
+        'W': 'White', 'U': 'Blue', 'B': 'Black', 'R': 'Red', 'G': 'Green',
+    }
+
+    @classmethod
+    def get_card_name(cls, card_dict):
         try:
-            return card_dict['cmc']
+            return cls._get_field(card_dict, 'name')
         except KeyError:
+            top_keys = list(card_dict.keys()) if isinstance(card_dict, dict) else type(card_dict).__name__
+            details_keys = list((card_dict.get('details') or {}).keys()) if isinstance(card_dict, dict) else None
+            card_id = card_dict.get('cardID') if isinstance(card_dict, dict) else None
+            scryfall_hit = bool(shared_scryfall_cache.get_by_id(card_id or ''))
+            raise KeyError(
+                "Card dictionary does not have a name key. "
+                f"top_keys={top_keys} details_keys={details_keys} "
+                f"cardID={card_id!r} scryfall_hit={scryfall_hit} "
+                f"sample={str(card_dict)[:400]}"
+            )
+
+    @classmethod
+    def get_cmc(cls, card_dict):
+        try:
+            return cls._get_field(card_dict, 'cmc')
+        except KeyError:
+            raise KeyError(f"Card {cls.get_card_name(card_dict)} does not have a cmc key.")
+
+    @classmethod
+    def get_type_line(cls, card_dict):
+        for key in ('type_line', 'type'):
             try:
-                return card_dict['details']['cmc']
+                type_line = cls._get_field(card_dict, key)
             except KeyError:
-                raise KeyError(f"Card {card_dict['details']['name']} does not have a cmc key.")
+                continue
+            # Double-faced/MDFC cards return "Front // Back"; keep only the front face
+            # so downstream type-palette lookups see a normal type.
+            if isinstance(type_line, str) and ' // ' in type_line:
+                type_line = type_line.split(' // ', 1)[0]
+            return type_line
+        raise KeyError(f"Card {cls.get_card_name(card_dict)} does not have a type_line key.")
 
-    @staticmethod
-    def get_type_line(card_dict):
+    @classmethod
+    def get_color_category(cls, card_dict):
+        for key in ('colorCategory', 'colorcategory'):
+            value = card_dict.get(key)
+            if value:
+                return value
+            details = card_dict.get('details') or {}
+            value = details.get(key)
+            if value:
+                return value
+
+        type_line = ''
         try:
-            type_line = card_dict['type_line']
+            type_line = cls.get_type_line(card_dict) or ''
         except KeyError:
-            if 'type' in card_dict['details']:
-                type_line = card_dict['details']['type']
-            elif 'type_line' in card_dict['details']:
-                type_line = card_dict['details']['type_line']
-            else:
-                raise KeyError(f"Card {card_dict['details']['name']} does not have a type_line key.")
+            pass
+        if 'Land' in type_line:
+            return 'Land'
 
-        return type_line
+        colors = card_dict.get('colors')
+        if not colors:
+            details = card_dict.get('details') or {}
+            colors = details.get('colors') or details.get('color_identity')
+        if not colors:
+            scryfall = shared_scryfall_cache.get_by_id(card_dict.get('cardID', ''))
+            colors = scryfall.get('colors') or scryfall.get('color_identity')
+            if not colors:
+                faces = scryfall.get('card_faces') or []
+                if faces:
+                    colors = faces[0].get('colors') or faces[0].get('color_identity') or []
+            colors = colors or []
 
-    @staticmethod
-    def get_color_category(card_dict):
+        if not colors:
+            return 'Colorless'
+        if len(colors) == 1:
+            return cls._COLOR_LETTER_TO_CATEGORY.get(colors[0], 'Colorless')
+        return 'Multicolored'
+
+    @classmethod
+    def get_set_identifier(cls, card_dict):
         try:
-            return card_dict['details']['colorcategory']
+            return cls._get_field(card_dict, 'set')
         except KeyError:
-            raise KeyError(f"Card {card_dict['details']['name']} does not have a colorcategory key.")
+            return ''
 
-    @staticmethod
-    def get_set_identifier(card_dict):
+    @classmethod
+    def get_collector_number(cls, card_dict):
         try:
-            return card_dict['details']['set']
+            return cls._get_field(card_dict, 'collector_number')
         except KeyError:
-            raise KeyError(f"Card {card_dict['details']['name']} does not have a set key.")
+            return ''
 
-    @staticmethod
-    def get_collector_number(card_dict):
+    @classmethod
+    def get_rarity(cls, card_dict):
         try:
-            return card_dict['details']['collector_number']
+            return cls._get_field(card_dict, 'rarity')
         except KeyError:
-            raise KeyError(f"Card {card_dict['details']['name']} does not have a collector_number key.")
+            return ''
 
-    @staticmethod
-    def get_rarity(card_dict):
-        try:
-            return card_dict['details']['rarity']
-        except KeyError:
-            raise KeyError(f"Card {card_dict['details']['name']} does not have a rarity key.")
-
-    @staticmethod
-    def get_maybeboard(card_dict):
-        try:
-            if card_dict['board'] == 'mainboard':
-                is_maybeboard = False
-            else:
-                is_maybeboard = True
-        except KeyError:
-            raise KeyError(f"Card {card_dict['details']['name']} does not have a board key.")
-
-        return is_maybeboard
+    @classmethod
+    def get_maybeboard(cls, card_dict):
+        board = card_dict.get('board', 'mainboard')
+        return board != 'mainboard'
 
     def make_filepath_with_backoff(self, target_file_path, backoff_level: int = 1):
         """
