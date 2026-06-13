@@ -108,11 +108,7 @@ Cube configs are JSON files in `src/cube_config/example_configs/`. The `CubeConf
 
 ## Environment Variables
 
-For Cube Cobra S3 bucket access (optional, set `useCubeCobraBucket: false` to skip):
-- `CUBE_COBRA_AWS_ACCESS_KEY_ID`
-- `CUBE_COBRA_AWS_SECRET_ACCESS_KEY`
-
-Contact Gwen Dekker (github.com/dekkerglen) for access keys.
+No environment variables are required. The crawler reads from Cube Cobra's public S3 export bucket (`s3://cubecobra-public/export/`) using anonymous access — set `useCubeCobraBucket: false` in the config to skip the bucket fetch entirely and rely solely on the explicit `cubeIds` list. The export is refreshed quarterly, so downloads are cached locally for 7 days.
 
 ## Constants and Configuration
 

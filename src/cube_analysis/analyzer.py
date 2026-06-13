@@ -219,6 +219,8 @@ class CubeAnalyzer(PipelineObject):
         :return: a string representing the cleaned card type line.
         """
         type_line = row.Type
+        if isinstance(type_line, str) and ' // ' in type_line:
+            type_line = type_line.split(' // ', 1)[0]
         try:
 
             cleaned_type_line = self.legendary_regex.sub("", self.hyphen_regex.sub("", type_line))

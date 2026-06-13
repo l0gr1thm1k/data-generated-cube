@@ -1,6 +1,8 @@
+import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+from loguru import logger
 
 import numpy as np
 
@@ -11,8 +13,8 @@ class RSSFeedParser:
         self.update_window_days = update_window_days
         self.now = datetime.utcnow()
 
-    async def calculate_update_weight(self, cube_identifier):
-        rss_feed = await self.fetch_rss_feed(cube_identifier)
+    async def calculate_update_weight(self, cube_identifier, session: aiohttp.ClientSession = None):
+        rss_feed = await self.fetch_rss_feed(cube_identifier, session)
         items = self.parse_feed_for_updates(rss_feed)
         updates = self.get_cube_updates_from_list(items)
         weights = self.get_update_weights(updates)
@@ -21,11 +23,30 @@ class RSSFeedParser:
         return weight
 
     @staticmethod
-    async def fetch_rss_feed(cube_identifier: str):
+    async def fetch_rss_feed(cube_identifier: str, session: aiohttp.ClientSession = None, max_retries: int = 3):
         url = f"https://cubecobra.com/cube/rss/{cube_identifier}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                return await response.text()
+
+        # If no session provided, create one (backwards compatibility)
+        if session is None:
+            async with aiohttp.ClientSession() as new_session:
+                return await RSSFeedParser._fetch_with_retry(url, new_session, max_retries)
+        else:
+            return await RSSFeedParser._fetch_with_retry(url, session, max_retries)
+
+    @staticmethod
+    async def _fetch_with_retry(url: str, session: aiohttp.ClientSession, max_retries: int):
+        for attempt in range(max_retries):
+            try:
+                async with session.get(url) as response:
+                    return await response.text()
+            except (aiohttp.ClientOSError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
+                if attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"RSS fetch {url} failed ({e}), retrying in {wait}s (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait)
+                else:
+                    logger.error(f"RSS fetch {url} failed after {max_retries} attempts: {e}")
+                    raise
 
     @staticmethod
     def parse_feed_for_updates(xml_content):
@@ -71,8 +92,8 @@ class RSSFeedParser:
         pub_date = item.find('pubDate').text
         return datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z")
 
-    async def get_most_recent_update_date(self, cube_identifier) -> str:
-        rss_feed = await self.fetch_rss_feed(cube_identifier)
+    async def get_most_recent_update_date(self, cube_identifier, session: aiohttp.ClientSession = None) -> datetime:
+        rss_feed = await self.fetch_rss_feed(cube_identifier, session)
         items = self.parse_feed_for_updates(rss_feed)
         return self.most_recent_mainboard_change(items)
 

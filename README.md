@@ -82,16 +82,12 @@ key in the configuration file:
 | useCubeCobraBucket | A boolean value indicating whether you want to use the Cube Cobra bucket. | true | If true, the Cube Cobra bucket will be used. If false, the Cube Cobra bucket will not be used.                                                                                                                  |
 
 #### Using the Cube Cobra Bucket
-The Cube Cobra bucket is a bucket in the Cube Cobra S3 bucket that contains all the cube data. Ths project uses the 
-bucket data to streamline the process of gathering cubes to sample for the data generated cube. The bucket requires two 
-variables to be set in your environment. 
-
-1. [CUBE_COBRA_AWS_ACCESS_KEY_ID](https://github.com/l0gr1thm1k/data-generated-cube/blob/f1fb9e6aa0513ea03ffa2800c57083081b44a9df/src/common/constants.py#L59)
-2. [CUBE_COBRA_AWS_SECRET_ACCESS_KEY](https://github.com/l0gr1thm1k/data-generated-cube/blob/f1fb9e6aa0513ea03ffa2800c57083081b44a9df/src/common/constants.py#L60)
-
-You will need to contact the admin of Cube Cobra [Gwen Dekker](https://github.com/dekkerglen) in order to get your own access keys if you would like 
-to use the AWS data. For a quicker result, I recommend setting this boolean value to false and supplying your own 
-list of cube IDs in the configuration file.
+The project pulls bulk cube data from Cube Cobra's public S3 export bucket (`s3://cubecobra-public/export/`),
+which contains `cubes.json` and `indexToOracleMap.json` and is documented at
+[cubecobra.com/tool/exports](https://cubecobra.com/tool/exports). The bucket allows anonymous access, so no
+AWS credentials are required. The export is refreshed quarterly and the project caches downloads locally for
+7 days. To skip the bulk fetch entirely and rely on the `cubeIds` list in your config, set `useCubeCobraBucket`
+to `false`.
 
 ### Running the Pipeline
 To run the pipeline, you will need to run the `__main__.py` script with the path to your configuration JSON as in 
