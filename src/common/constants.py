@@ -59,10 +59,7 @@ TYPE_PALETTE = {
     "Battle": "Pink"
 }
 
-AWS_ACCESS_KEY_ID = os.environ.get("CUBE_COBRA_AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.environ.get("CUBE_COBRA_AWS_SECRET_ACCESS_KEY")
-
-BLACKLIST_REGEX = r"""\b(white|black|blue|red|green|esper|grixis|naya|jund|bant|jeskai|temur|mardu|sultai|abzan|old school|oldschool|93|94|border|alpha|beta|antiquities|legends|pre.*modern|mono|frame|nostalgia|\sabu\s|data generated|pre[\b-]|connect the clues|type (1|one|2|two)|the garfield cube|alternate history| simple is best)\b"""
+BLACKLIST_REGEX = r"""\b(white|black|blue|red|green|esper|grixis|naya|jund|bant|jeskai|temur|mardu|sultai|abzan|old school|oldschool|93|94|border|alpha|beta|antiquities|legends|pre.*modern|mono|frame|nostalgia|\sabu\s|data generated|pre[\b-]|connect the clues|type (1|one|2|two)|the garfield cube|alternate history| simple is best|Power Vintage 360)\b"""
 
 EVERGREEN_KEYWORDS = {
     "Activate", "Attach", "Cast", "Counter", "Create", "Deathtouch", "Defender", "Destroy", "Discard",
